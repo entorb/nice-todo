@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from src.models import Board, Column, Label
 
-# ── Shared style constants ────────────────────────────────────────────
+# Shared style constants
 _DIALOG_ACTIONS_CLASSES = "w-full justify-end gap-2 mt-4"
 _DIALOG_CARD_CLASSES = "p-4 min-w-[300px]"
 _BTN_PRIMARY_PROPS = "color=primary"

@@ -27,7 +27,7 @@ class Database:
         """Create a new database session."""
         return Session(self._engine)
 
-    # ── Board ─────────────────────────────────────────────────────
+    # Board
 
     def get_board_by_key(self, key: str) -> Board | None:
         """Load board with all relationships, sorted by position."""
@@ -94,7 +94,7 @@ class Database:
                 s.delete(board)
                 s.commit()
 
-    # ── Columns ───────────────────────────────────────────────────
+    # Columns
 
     def get_columns(self, board_id: int) -> list[Column]:
         """Get columns for a board, ordered by position."""
@@ -140,7 +140,7 @@ class Database:
                 s.delete(col)
                 s.commit()
 
-    # ── Cards ─────────────────────────────────────────────────────
+    # Cards
 
     def get_cards(self, column_id: int) -> list[Card]:
         """Get cards for a column, ordered by position."""
@@ -276,7 +276,7 @@ class Database:
                     s.add(card)
             s.commit()
 
-    # ── Labels ────────────────────────────────────────────────────
+    # Labels
 
     def get_labels(self) -> list[Label]:
         """Get all labels."""

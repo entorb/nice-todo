@@ -15,7 +15,7 @@ from src.services.board_service import BoardService  # noqa: E402
 from src.services.export_service import ExportService  # noqa: E402
 from src.ui.board_page import create_board_page  # noqa: E402
 
-# ── Subpath support (e.g. https://entorb.net/nice-todo) ────────────
+# Subpath support (e.g. https://entorb.net/nice-todo)
 # Set NICEGUI_SUBPATH="/nice-todo" on the server (behind reverse proxy with
 # --remove-prefix).  Leave unset locally for normal root-level access.
 SUBPATH = os.environ.get("NICEGUI_SUBPATH", "")

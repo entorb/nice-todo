@@ -20,7 +20,7 @@ class BoardService:
     def __init__(self, db: Database) -> None:  # noqa: D107
         self._db = db
 
-    # ── Board ─────────────────────────────────────────────────────────
+    # Board
 
     def load_board(self, key: str) -> Board | None:
         """Fetch board by key, update last_login. Relationships auto-load."""
@@ -34,7 +34,7 @@ class BoardService:
         """Return all boards."""
         return self._db.get_all_boards()
 
-    # ── Columns ───────────────────────────────────────────────────────
+    # Columns
 
     def add_column(self, board_id: int) -> Column | str:
         """Create a new column with unique default name at the end of the board."""
@@ -67,7 +67,7 @@ class BoardService:
         """Delete a column and all its cards."""
         self._db.delete_column(column_id)
 
-    # ── Cards ─────────────────────────────────────────────────────────
+    # Cards
 
     def add_card(self, column_id: int, title: str) -> Card:
         """Create a new card at the end of the column."""
@@ -111,7 +111,7 @@ class BoardService:
         """Set template flag on multiple cards at once."""
         self._db.bulk_set_template(card_ids, is_template=is_template)
 
-    # ── Labels ────────────────────────────────────────────────────────
+    # Labels
 
     def get_labels(self) -> list[Label]:
         """Return all global labels."""
@@ -153,7 +153,7 @@ class BoardService:
         """Delete a label and clear it from all cards."""
         self._db.delete_label(label_id)
 
-    # ── Bulk delete ───────────────────────────────────────────────────
+    # Bulk delete
 
     def sort_cards(self, board_id: int, labels: list[Label]) -> None:
         """Sort cards: uncompleted first, then completed, by label then title."""
@@ -181,7 +181,7 @@ class BoardService:
         """Delete all non-template cards."""
         return self._db.delete_all_non_template_cards(board_id)
 
-    # ── Board management ──────────────────────────────────────────────
+    # Board management
 
     def rename_board(self, board_id: int, name: str) -> None:
         """Rename the board."""
