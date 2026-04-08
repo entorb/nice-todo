@@ -5,10 +5,11 @@ Usage: python -m src.delete_board <board_id_or_key>
 """
 
 import sys
+from pathlib import Path
 
 from sqlmodel import select
 
-from src.db.database import Database
+from src.database import Database
 from src.models import Board
 
 _EXPECTED_ARGS = 2
@@ -24,7 +25,7 @@ def main() -> None:
         sys.exit(1)
 
     identifier = sys.argv[1]
-    db = Database(db_path="sqlite.db")
+    db = Database(db_path=Path("sqlite.db"))
 
     # Try as key first, then as integer ID
     board = db.get_board_by_key(identifier)

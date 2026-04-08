@@ -10,7 +10,7 @@ load_dotenv()
 from nicegui import ui  # noqa: E402
 
 from src.auth import setup_auth  # noqa: E402
-from src.db.database import Database  # noqa: E402
+from src.database import Database  # noqa: E402
 from src.services.board_service import BoardService  # noqa: E402
 from src.services.export_service import ExportService  # noqa: E402
 from src.ui.board_page import create_board_page  # noqa: E402
