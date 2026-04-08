@@ -16,17 +16,39 @@ if TYPE_CHECKING:
 
     from src.models import Card, Column, Label
 
-# ── Shared constants ──────────────────────────────────────────────────
+# Shared constants
 _EVENT_KEYDOWN_ENTER = "keydown.enter"
+_ICON_BTN_OPACITY = "opacity:0.6;"
 _ICON_BTN_PROPS = "flat dense round size=xs"
+_LUMINANCE_THRESHOLD = 0.45
+_OPACITY_COLUMN_DELETE = "opacity:0.5;"
+_OPACITY_COMPLETED_LABELED = "opacity:0.45;"
+_OPACITY_COMPLETED_PLAIN = "opacity:0.5;"
 
-# ── Module-level drag state ───────────────────────────────────────────
+# Colors
+_COLOR_CARD_BG = "white"
+_COLOR_CARD_COMPLETED_BG = "#f5f5f5"
+_COLOR_COLUMN_BG = "#eceff1"
+_COLOR_COLUMN_HIGHLIGHT = "#cfd8dc"
+_COLOR_TEXT_DARK = "#222"
+_COLOR_TEXT_LIGHT = "#fff"
+
+# Module-level drag state
 dragged: CardComponent | None = None
 drop_target: CardComponent | None = None
 dragged_column: ColumnComponent | None = None
 
 
-# ── CardComponent ─────────────────────────────────────────────────────
+# CardComponent
+def _contrast_color(hex_color: str) -> str:
+    """Return black or white text color based on background luminance."""
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) == 3:  # noqa: PLR2004
+        hex_color = "".join(c * 2 for c in hex_color)
+    r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    # Perceived luminance (ITU-R BT.601)
+    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return _COLOR_TEXT_DARK if luminance > _LUMINANCE_THRESHOLD else _COLOR_TEXT_LIGHT
 
 
 class CardComponent(ui.card):
@@ -59,9 +81,11 @@ class CardComponent(ui.card):
         self._on_move_to_board = on_move_to_board
 
         style = self._compute_style(card, label)
+        text_color = _contrast_color(label.color) if label else _COLOR_TEXT_DARK
+        color_class = "card-dark" if text_color == _COLOR_TEXT_DARK else "card-light"
 
         with (
-            self.classes("w-full cursor-pointer").style(style),
+            self.classes(f"w-full cursor-pointer {color_class}").style(style),
             ui.row().classes("items-center w-full no-wrap gap-1"),
         ):
             self._build_drag_handle()
@@ -69,7 +93,7 @@ class CardComponent(ui.card):
             self._build_title(card)
             self._build_action_buttons(card, available_labels)
 
-        # ── Drag events ───────────────────────────────────────────
+        # Drag events
         self.on("dragstart", self._handle_dragstart)
         self.on("dragend", lambda: self.props(remove="draggable"))
         self.on("dragover.prevent", self._handle_dragover)
@@ -82,24 +106,24 @@ class CardComponent(ui.card):
             "transition:box-shadow 0.15s,opacity 0.15s;"
         )
         if label is not None:
-            style += f"background:{label.color};"
+            text_color = _contrast_color(label.color)
+            style += f"background:{label.color};color:{text_color};"
             if card.is_completed:
-                style += "opacity:0.45;"
+                style += _OPACITY_COMPLETED_LABELED
         elif card.is_completed:
-            style += "background:#f5f5f5;opacity:0.6;"
+            style += (
+                f"background:{_COLOR_CARD_COMPLETED_BG};"
+                f"{_OPACITY_COMPLETED_PLAIN}color:{_COLOR_TEXT_DARK};"
+            )
         else:
-            style += "background:white;"
+            style += f"background:{_COLOR_CARD_BG};color:{_COLOR_TEXT_DARK};"
 
-        if card.is_template:
-            style += "border:2px dashed #90a4ae;"
         return style
 
     def _build_drag_handle(self) -> None:
         """Build the drag-handle icon."""
         handle = (
-            ui.icon("drag_indicator")
-            .classes("text-grey-5 cursor-grab")
-            .style("font-size:1.1rem;")
+            ui.icon("drag_indicator").classes("cursor-grab").style("font-size:1.1rem;")
         )
         handle.on("mousedown", lambda: self.props("draggable"))
         handle.on("mouseup", lambda: self.props(remove="draggable"))
@@ -116,6 +140,7 @@ class CardComponent(ui.card):
                 ),
             ).classes("min-w-[24px] min-h-[24px]").props("dense")
 
+        check_opacity = "" if card.is_completed else _ICON_BTN_OPACITY
         ui.checkbox(
             value=card.is_completed,
             on_change=lambda e, cid=card.id: (
@@ -123,9 +148,9 @@ class CardComponent(ui.card):
                 if self._on_toggle_completed
                 else None
             ),
-        ).classes("min-w-[24px] min-h-[24px]").props("dense color=green").tooltip(
-            "Toggle completed"
-        )
+        ).classes("min-w-[24px] min-h-[24px]").props("dense color=green").style(
+            check_opacity
+        ).tooltip("Toggle completed")
 
     def _build_title(self, card: Card) -> None:
         """Build the editable title input."""
@@ -153,8 +178,12 @@ class CardComponent(ui.card):
         available_labels: list[Label] | None,
     ) -> None:
         """Build template toggle, label picker, move, and delete buttons."""
+        # Label picker
+        if available_labels and self._on_set_label:
+            self._build_label_picker(card, available_labels)
+
         # Template toggle
-        tmpl_color = "text-blue-grey-7" if card.is_template else "text-grey-4"
+        pin_opacity = "" if card.is_template else _ICON_BTN_OPACITY
         ui.button(
             icon="push_pin",
             on_click=lambda _, cid=card.id, cur=card.is_template: (
@@ -162,22 +191,16 @@ class CardComponent(ui.card):
                 if self._on_toggle_template
                 else None
             ),
-        ).props(_ICON_BTN_PROPS).classes(tmpl_color).tooltip(
+        ).props(_ICON_BTN_PROPS).style(pin_opacity).tooltip(
             "Template" if card.is_template else "Make template"
         )
-
-        # Label picker
-        if available_labels and self._on_set_label:
-            self._build_label_picker(card, available_labels)
 
         # Move to board button
         if self._on_move_to_board:
             ui.button(
                 icon="drive_file_move",
                 on_click=lambda _, cid=card.id: self._on_move_to_board(cid),  # type: ignore[misc]
-            ).props(_ICON_BTN_PROPS).classes("text-grey-5").style(
-                "opacity:0.4;"
-            ).tooltip("Move to board")
+            ).props(_ICON_BTN_PROPS).style(_ICON_BTN_OPACITY).tooltip("Move to board")
 
         # Delete button
         ui.button(
@@ -187,16 +210,14 @@ class CardComponent(ui.card):
                 if self._on_delete
                 else None
             ),
-        ).props(_ICON_BTN_PROPS).classes("text-grey-5").style("opacity:0.4;").tooltip(
-            "Delete card"
-        )
+        ).props(_ICON_BTN_PROPS).style(_ICON_BTN_OPACITY).tooltip("Delete card")
 
     def _build_label_picker(self, card: Card, available_labels: list[Label]) -> None:
         """Build the label picker menu."""
         with (
             ui.button(icon="label")
             .props(_ICON_BTN_PROPS)
-            .classes("text-grey-6")
+            .style(_ICON_BTN_OPACITY)
             .tooltip("Set label"),
             ui.menu() as label_menu,
         ):
@@ -226,7 +247,7 @@ class CardComponent(ui.card):
         drop_target = self
 
 
-# ── ColumnComponent ───────────────────────────────────────────────────
+# ColumnComponent
 
 
 class ColumnComponent(ui.column):
@@ -262,9 +283,9 @@ class ColumnComponent(ui.column):
 
         with self.classes("rounded-lg board-col").style(
             "min-width:280px;max-width:320px;gap:3px;"
-            "background:#eceff1;padding:12px;border-radius:10px;"
+            f"background:{_COLOR_COLUMN_BG};padding:12px;border-radius:10px;"
         ):
-            # ── Column header ─────────────────────────────────────
+            # Column header
             with ui.row().classes("items-center w-full no-wrap gap-0"):
                 # Drag handle
                 ui.icon("drag_indicator", size="sm").classes(
@@ -307,10 +328,10 @@ class ColumnComponent(ui.column):
                         else None
                     ),
                 ).props("flat dense round size=sm").classes("text-grey-5").style(
-                    "opacity:0.5;"
+                    _OPACITY_COLUMN_DELETE
                 ).tooltip("Delete column")
 
-            # ── Card list ─────────────────────────────────────────
+            # Card list
             for card in column.cards:
                 card_label = labels_map.get(card.label_id) if card.label_id else None
                 CardComponent(
@@ -320,7 +341,7 @@ class ColumnComponent(ui.column):
                     **(card_callbacks or {}),
                 )
 
-            # ── Add card input ────────────────────────────────────
+            # Add card input
             add_input = (
                 ui.input(placeholder="+ Add a card…")
                 .classes(f"w-full add-card-input-col-{column.id}")
@@ -337,7 +358,7 @@ class ColumnComponent(ui.column):
                 ),
             )
 
-        # ── Drop events ───────────────────────────────────────────
+        # Drop events
         self.on("dragover.prevent", self._highlight)
         self.on("dragleave", self._unhighlight)
         self.on("drop", self._handle_drop)
@@ -347,10 +368,10 @@ class ColumnComponent(ui.column):
         dragged_column = self
 
     def _highlight(self) -> None:
-        self.style("background:#cfd8dc;")
+        self.style(f"background:{_COLOR_COLUMN_HIGHLIGHT};")
 
     def _unhighlight(self) -> None:
-        self.style("background:#eceff1;")
+        self.style(f"background:{_COLOR_COLUMN_BG};")
 
     def _handle_drop(self) -> None:
         global dragged, drop_target, dragged_column  # noqa: PLW0603

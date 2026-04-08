@@ -53,6 +53,10 @@ _PAGE_STYLE = (
     ".board-columns .board-col{min-width:100% !important;max-width:100% !important;}"
     ".nicegui-content{padding:8px 8px !important;}"
     "}"
+    ".card-dark .q-btn,.card-dark .q-icon,"
+    ".card-dark .q-field__native,.card-dark .q-checkbox__inner{color:#222 !important}"
+    ".card-light .q-btn,.card-light .q-icon,"
+    ".card-light .q-field__native,.card-light .q-checkbox__inner{color:#fff !important}"
     "</style>"
 )
 
@@ -513,6 +517,7 @@ def create_board_page(
 
     @ui.page("/")
     def board_page(key: str = "") -> None:
+        ui.colors(primary="#37474f", secondary="#546e7a", negative="#c62828")
         ui.add_head_html(_init_polyfill())
         ui.add_head_html(_PAGE_STYLE)
 
