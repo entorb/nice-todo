@@ -3,12 +3,17 @@
 import os
 from pathlib import Path
 
-from nicegui import ui
+from dotenv import load_dotenv
 
-from src.db.database import Database
-from src.services.board_service import BoardService
-from src.services.export_service import ExportService
-from src.ui.board_page import create_board_page
+load_dotenv()
+
+from nicegui import ui  # noqa: E402
+
+from src.auth import setup_auth  # noqa: E402
+from src.db.database import Database  # noqa: E402
+from src.services.board_service import BoardService  # noqa: E402
+from src.services.export_service import ExportService  # noqa: E402
+from src.ui.board_page import create_board_page  # noqa: E402
 
 # ── Subpath support (e.g. https://entorb.net/nice-todo) ────────────
 # Set NICEGUI_SUBPATH="/nice-todo" on the server (behind reverse proxy with
@@ -23,6 +28,7 @@ db.init()
 board_service = BoardService(db)
 export_service = ExportService()
 
+setup_auth()
 create_board_page(board_service, export_service)
 
 ui.run(title="TODO Board", port=8505, language="en-US", root_path=SUBPATH)
