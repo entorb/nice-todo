@@ -10,7 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.db.database import Database
+    from src.database import Database
     from src.models import Board, Card, Column, Label
 
 
