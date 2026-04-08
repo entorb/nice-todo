@@ -116,6 +116,12 @@ class BoardPageController:
             ui.label(self._board.name).classes("text-h5").style(
                 "font-weight:700;color:white;letter-spacing:-0.5px;"
             )
+            ui.button(
+                icon="sync",
+                on_click=self._refresh,
+            ).props("flat dense round").classes("text-white").tooltip(
+                "Sync from server"
+            )
             with (
                 ui.button(icon="more_vert")
                 .props("flat dense round")
