@@ -11,12 +11,17 @@ if TYPE_CHECKING:
 
     from src.models import Board, Column, Label
 
+# ── Shared style constants ────────────────────────────────────────────
+_DIALOG_ACTIONS_CLASSES = "w-full justify-end gap-2 mt-4"
+_DIALOG_CARD_CLASSES = "p-4 min-w-[300px]"
+_BTN_PRIMARY_PROPS = "color=primary"
+
 
 def confirm_dialog(message: str, on_confirm: Callable[[], None]) -> ui.dialog:
     """Show a confirmation dialog with Cancel/Confirm buttons."""
     with ui.dialog() as dialog, ui.card().classes("p-4"):
         ui.label(message).classes("text-body1")
-        with ui.row().classes("w-full justify-end gap-2 mt-4"):
+        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Confirm",
@@ -36,7 +41,7 @@ def label_editor_dialog(
     initial_name = label.name if is_edit else ""
     initial_color = label.color if is_edit else "#cccccc"
 
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[300px]"):
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label(title).classes("text-h6")
         name_input = ui.input(
             label="Name",
@@ -46,12 +51,12 @@ def label_editor_dialog(
             label="Color",
             value=initial_color,
         ).classes("w-full")
-        with ui.row().classes("w-full justify-end gap-2 mt-4"):
+        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Save",
                 on_click=lambda: _save_label(dialog, name_input, color_input, on_save),
-            ).props("color=primary")
+            ).props(_BTN_PRIMARY_PROPS)
     dialog.open()
     return dialog
 
@@ -85,12 +90,12 @@ def export_dialog(markdown: str) -> ui.dialog:
             .classes("w-full font-mono")
             .props("readonly autogrow")
         )
-        with ui.row().classes("w-full justify-end gap-2 mt-4"):
+        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button(
                 "Copy to clipboard",
                 icon="content_copy",
                 on_click=lambda: _copy_to_clipboard(textarea.value or ""),
-            ).props("color=primary")
+            ).props(_BTN_PRIMARY_PROPS)
             ui.button("Close", on_click=dialog.close).props("flat")
     dialog.open()
     return dialog
@@ -110,20 +115,20 @@ def rename_board_dialog(
     validate_key: Callable[[str], str | None],
 ) -> ui.dialog:
     """Show a dialog to rename the board and edit its key."""
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[300px]"):
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Rename Board").classes("text-h6")
         name_input = ui.input(label="Board Name", value=current_name).classes("w-full")
         key_input = ui.input(label="Board Key", value=current_key).classes("w-full")
         error_label = ui.label("").classes("text-negative text-caption")
         error_label.set_visibility(False)
-        with ui.row().classes("w-full justify-end gap-2 mt-4"):
+        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Save",
                 on_click=lambda: _save_rename_board(
                     dialog, name_input, key_input, error_label, on_save, validate_key
                 ),
-            ).props("color=primary")
+            ).props(_BTN_PRIMARY_PROPS)
     dialog.open()
     return dialog
 
@@ -154,25 +159,25 @@ def _save_rename_board(  # noqa: PLR0913
 
 def export_scope_dialog(on_export: Callable[[bool], None]) -> ui.dialog:
     """Show a dialog to choose export scope (all or completed only)."""
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[300px]"):
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Export").classes("text-h6")
         scope = ui.toggle(
             {False: "All Cards", True: "Completed Only"},
             value=False,
         ).classes("w-full")
-        with ui.row().classes("w-full justify-end gap-2 mt-4"):
+        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Export",
                 on_click=lambda: (dialog.close(), on_export(scope.value)),
-            ).props("color=primary")
+            ).props(_BTN_PRIMARY_PROPS)
     dialog.open()
     return dialog
 
 
 def delete_cards_dialog(on_delete: Callable[[bool], None]) -> ui.dialog:
     """Show a dialog to choose which cards to delete."""
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[300px]"):
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Delete Cards").classes("text-h6")
         scope = ui.toggle(
             {True: "Finished Only", False: "All Cards"},
@@ -181,7 +186,7 @@ def delete_cards_dialog(on_delete: Callable[[bool], None]) -> ui.dialog:
         ui.label("Non-template cards will be deleted.").classes(
             "text-caption text-grey"
         )
-        with ui.row().classes("w-full justify-end gap-2 mt-4"):
+        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Delete",
@@ -196,7 +201,7 @@ def pick_board_dialog(
     on_select: Callable[[Board], None],
 ) -> ui.dialog:
     """Show a dialog to pick a target board."""
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[300px]"):
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Move to Board").classes("text-h6")
         for b in boards:
             ui.button(
@@ -214,7 +219,7 @@ def pick_column_dialog(
     on_select: Callable[[int, ui.dialog], None],
 ) -> ui.dialog:
     """Show a dialog to pick a target column."""
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[300px]"):
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Pick Target Column").classes("text-h6")
         for col in columns:
             ui.button(

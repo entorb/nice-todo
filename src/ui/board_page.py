@@ -57,6 +57,9 @@ _PAGE_STYLE = (
 )
 
 
+_BULK_BTN_STYLE = "border-radius:16px;text-transform:none;"
+
+
 class BoardPageController:
     """Encapsulates board page state and event handlers."""
 
@@ -70,7 +73,7 @@ class BoardPageController:
         self._key = key
         self._bs = board_service
         self._es = export_service
-        self._board: Board = None  # type: ignore[assignment]
+        self._board: Board | None = None
         self._labels: list[Label] = []
         self._bulk_active = False
         self._bulk_selected: set[int] = set()
@@ -99,6 +102,7 @@ class BoardPageController:
     # -- render --
 
     def _render_board(self) -> None:
+        assert self._board is not None
         self._render_heading()
         self._render_bulk_bar()
         self._render_columns()
@@ -151,25 +155,25 @@ class BoardPageController:
                     on_click=lambda _, lid=lbl.id: self._on_bulk_label(lid),
                 ).style(
                     f"background-color:{lbl.color} !important;"
-                    "color:white !important;border-radius:16px;"
-                    "text-transform:none;font-weight:500;"
+                    "color:white !important;"
+                    f"{_BULK_BTN_STYLE}font-weight:500;"
                 )
             if self._labels:
                 ui.button(
                     "Remove Label",
                     on_click=lambda: self._on_bulk_label(None),
-                ).props("flat outline").style("border-radius:16px;text-transform:none;")
+                ).props("flat outline").style(_BULK_BTN_STYLE)
             ui.separator().props("vertical")
             ui.button(
                 "Set Template",
                 icon="push_pin",
                 on_click=lambda: self._on_bulk_template(is_template=True),
-            ).props("outline").style("border-radius:16px;text-transform:none;")
+            ).props("outline").style(_BULK_BTN_STYLE)
             ui.button(
                 "Unset Template",
                 icon="push_pin",
                 on_click=lambda: self._on_bulk_template(is_template=False),
-            ).props("flat outline").style("border-radius:16px;text-transform:none;")
+            ).props("flat outline").style(_BULK_BTN_STYLE)
             ui.button(
                 "Cancel",
                 on_click=self._on_toggle_bulk,

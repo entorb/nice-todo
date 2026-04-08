@@ -16,6 +16,10 @@ if TYPE_CHECKING:
 
     from src.models import Card, Column, Label
 
+# ── Shared constants ──────────────────────────────────────────────────
+_EVENT_KEYDOWN_ENTER = "keydown.enter"
+_ICON_BTN_PROPS = "flat dense round size=xs"
+
 # ── Module-level drag state ───────────────────────────────────────────
 dragged: CardComponent | None = None
 drop_target: CardComponent | None = None
@@ -54,16 +58,33 @@ class CardComponent(ui.card):
         self._on_set_label = on_set_label
         self._on_move_to_board = on_move_to_board
 
-        # ── Visual styling ────────────────────────────────────────
-        base_classes = "w-full cursor-pointer"
-        style = "min-height:30px;padding:2px 8px;border-radius:6px;"
-        style += "transition:box-shadow 0.15s,opacity 0.15s;"
+        style = self._compute_style(card, label)
 
+        with (
+            self.classes("w-full cursor-pointer").style(style),
+            ui.row().classes("items-center w-full no-wrap gap-1"),
+        ):
+            self._build_drag_handle()
+            self._build_checkboxes(card, bulk_mode=bulk_mode)
+            self._build_title(card)
+            self._build_action_buttons(card, available_labels)
+
+        # ── Drag events ───────────────────────────────────────────
+        self.on("dragstart", self._handle_dragstart)
+        self.on("dragend", lambda: self.props(remove="draggable"))
+        self.on("dragover.prevent", self._handle_dragover)
+
+    @staticmethod
+    def _compute_style(card: Card, label: Label | None) -> str:
+        """Compute the card's inline CSS style string."""
+        style = (
+            "min-height:30px;padding:2px 8px;border-radius:6px;"
+            "transition:box-shadow 0.15s,opacity 0.15s;"
+        )
         if label is not None:
+            style += f"background:{label.color};"
             if card.is_completed:
-                style += f"background:{label.color};opacity:0.45;"
-            else:
-                style += f"background:{label.color};"
+                style += "opacity:0.45;"
         elif card.is_completed:
             style += "background:#f5f5f5;opacity:0.6;"
         else:
@@ -71,138 +92,130 @@ class CardComponent(ui.card):
 
         if card.is_template:
             style += "border:2px dashed #90a4ae;"
+        return style
 
-        with (
-            self.classes(base_classes).style(style),
-            ui.row().classes("items-center w-full no-wrap gap-1"),
-        ):
-            # Drag handle — only this icon initiates card drag
-            handle = (
-                ui.icon("drag_indicator")
-                .classes("text-grey-5 cursor-grab")
-                .style("font-size:1.1rem;")
-            )
-            handle.on(
-                "mousedown",
-                lambda: self.props("draggable"),
-            )
-            handle.on(
-                "mouseup",
-                lambda: self.props(remove="draggable"),
-            )
+    def _build_drag_handle(self) -> None:
+        """Build the drag-handle icon."""
+        handle = (
+            ui.icon("drag_indicator")
+            .classes("text-grey-5 cursor-grab")
+            .style("font-size:1.1rem;")
+        )
+        handle.on("mousedown", lambda: self.props("draggable"))
+        handle.on("mouseup", lambda: self.props(remove="draggable"))
 
-            # Bulk-selection checkbox
-            if bulk_mode:
-                ui.checkbox(
-                    value=False,
-                    on_change=lambda e, cid=card.id: (
-                        self._on_select(cid, e.value)  # type: ignore[misc]
-                        if self._on_select
-                        else None
-                    ),
-                ).classes("min-w-[24px] min-h-[24px]").props("dense")
-
-            # Completion checkbox
+    def _build_checkboxes(self, card: Card, *, bulk_mode: bool) -> None:
+        """Build bulk-selection and completion checkboxes."""
+        if bulk_mode:
             ui.checkbox(
-                value=card.is_completed,
+                value=False,
                 on_change=lambda e, cid=card.id: (
-                    self._on_toggle_completed(cid, e.value)  # type: ignore[misc]
-                    if self._on_toggle_completed
+                    self._on_select(cid, e.value)  # type: ignore[misc]
+                    if self._on_select
                     else None
                 ),
-            ).classes("min-w-[24px] min-h-[24px]").props("dense color=green").tooltip(
-                "Toggle completed"
-            )
+            ).classes("min-w-[24px] min-h-[24px]").props("dense")
 
-            # Editable title
-            title_classes = "flex-grow cursor-text"
-            title_input = (
-                ui.input(value=card.title)
-                .classes(title_classes)
-                .props("dense borderless autogrow")
-                .style("font-size:0.9rem;word-wrap:break-word;")
-            )
-            title_input.on(
-                "keydown.enter",
-                lambda _e, inp=title_input, cid=card.id: (
-                    self._on_edit_title(cid, inp.value)  # type: ignore[misc]
-                    if self._on_edit_title and inp.value
-                    else None
-                ),
-            )
-            title_input.on(
-                "blur",
-                lambda _e, inp=title_input, cid=card.id: (
-                    self._on_edit_title(cid, inp.value)  # type: ignore[misc]
-                    if self._on_edit_title and inp.value
-                    else None
-                ),
-            )
+        ui.checkbox(
+            value=card.is_completed,
+            on_change=lambda e, cid=card.id: (
+                self._on_toggle_completed(cid, e.value)  # type: ignore[misc]
+                if self._on_toggle_completed
+                else None
+            ),
+        ).classes("min-w-[24px] min-h-[24px]").props("dense color=green").tooltip(
+            "Toggle completed"
+        )
 
-            # Template toggle
-            tmpl_color = "text-blue-grey-7" if card.is_template else "text-grey-4"
+    def _build_title(self, card: Card) -> None:
+        """Build the editable title input."""
+        title_input = (
+            ui.input(value=card.title)
+            .classes("flex-grow cursor-text")
+            .props("dense borderless autogrow")
+            .style("font-size:0.9rem;word-wrap:break-word;")
+        )
+
+        def on_commit(
+            _e: object,
+            inp: ui.input = title_input,
+            cid: int | None = card.id,
+        ) -> None:
+            if self._on_edit_title and inp.value:
+                self._on_edit_title(cid, inp.value)  # type: ignore[arg-type]
+
+        title_input.on(_EVENT_KEYDOWN_ENTER, on_commit)
+        title_input.on("blur", on_commit)
+
+    def _build_action_buttons(
+        self,
+        card: Card,
+        available_labels: list[Label] | None,
+    ) -> None:
+        """Build template toggle, label picker, move, and delete buttons."""
+        # Template toggle
+        tmpl_color = "text-blue-grey-7" if card.is_template else "text-grey-4"
+        ui.button(
+            icon="push_pin",
+            on_click=lambda _, cid=card.id, cur=card.is_template: (
+                self._on_toggle_template(cid, not cur)  # type: ignore[misc]
+                if self._on_toggle_template
+                else None
+            ),
+        ).props(_ICON_BTN_PROPS).classes(tmpl_color).tooltip(
+            "Template" if card.is_template else "Make template"
+        )
+
+        # Label picker
+        if available_labels and self._on_set_label:
+            self._build_label_picker(card, available_labels)
+
+        # Move to board button
+        if self._on_move_to_board:
             ui.button(
-                icon="push_pin",
-                on_click=lambda _, cid=card.id, cur=card.is_template: (
-                    self._on_toggle_template(cid, not cur)  # type: ignore[misc]
-                    if self._on_toggle_template
-                    else None
-                ),
-            ).props("flat dense round size=xs").classes(tmpl_color).tooltip(
-                "Template" if card.is_template else "Make template"
-            )
-
-            # Label picker
-            if available_labels and self._on_set_label:
-                with (
-                    ui.button(icon="label")
-                    .props("flat dense round size=xs")
-                    .classes("text-grey-6")
-                    .tooltip("Set label"),
-                    ui.menu() as label_menu,
-                ):
-                    for lbl in available_labels:
-                        ui.menu_item(
-                            lbl.name,
-                            on_click=lambda _, lid=lbl.id, cid=card.id: (
-                                self._on_set_label(cid, lid),  # type: ignore[misc]
-                                label_menu.close(),
-                            ),
-                        ).style(f"border-left:4px solid {lbl.color};padding-left:8px;")
-                    ui.separator()
-                    ui.menu_item(
-                        "Remove label",
-                        on_click=lambda _, cid=card.id: (
-                            self._on_set_label(cid, None),  # type: ignore[misc]
-                            label_menu.close(),
-                        ),
-                    )
-
-            # Move to board button
-            if self._on_move_to_board:
-                ui.button(
-                    icon="drive_file_move",
-                    on_click=lambda _, cid=card.id: self._on_move_to_board(cid),  # type: ignore[misc]
-                ).props("flat dense round size=xs").classes("text-grey-5").style(
-                    "opacity:0.4;"
-                ).tooltip("Move to board")
-
-            # Delete button
-            ui.button(
-                icon="close",
-                on_click=lambda _, cid=card.id: (
-                    self._on_delete(cid)  # type: ignore[misc]
-                    if self._on_delete
-                    else None
-                ),
-            ).props("flat dense round size=xs").classes("text-grey-5").style(
+                icon="drive_file_move",
+                on_click=lambda _, cid=card.id: self._on_move_to_board(cid),  # type: ignore[misc]
+            ).props(_ICON_BTN_PROPS).classes("text-grey-5").style(
                 "opacity:0.4;"
-            ).tooltip("Delete card")
+            ).tooltip("Move to board")
 
-        # ── Drag events ───────────────────────────────────────────
-        self.on("dragstart", self._handle_dragstart)
-        self.on("dragend", lambda: self.props(remove="draggable"))
-        self.on("dragover.prevent", self._handle_dragover)
+        # Delete button
+        ui.button(
+            icon="close",
+            on_click=lambda _, cid=card.id: (
+                self._on_delete(cid)  # type: ignore[misc]
+                if self._on_delete
+                else None
+            ),
+        ).props(_ICON_BTN_PROPS).classes("text-grey-5").style("opacity:0.4;").tooltip(
+            "Delete card"
+        )
+
+    def _build_label_picker(self, card: Card, available_labels: list[Label]) -> None:
+        """Build the label picker menu."""
+        with (
+            ui.button(icon="label")
+            .props(_ICON_BTN_PROPS)
+            .classes("text-grey-6")
+            .tooltip("Set label"),
+            ui.menu() as label_menu,
+        ):
+            for lbl in available_labels:
+                ui.menu_item(
+                    lbl.name,
+                    on_click=lambda _, lid=lbl.id, cid=card.id: (
+                        self._on_set_label(cid, lid),  # type: ignore[misc]
+                        label_menu.close(),
+                    ),
+                ).style(f"border-left:4px solid {lbl.color};padding-left:8px;")
+            ui.separator()
+            ui.menu_item(
+                "Remove label",
+                on_click=lambda _, cid=card.id: (
+                    self._on_set_label(cid, None),  # type: ignore[misc]
+                    label_menu.close(),
+                ),
+            )
 
     def _handle_dragstart(self) -> None:
         global dragged  # noqa: PLW0603
@@ -266,7 +279,7 @@ class ColumnComponent(ui.column):
                     .style("font-weight:600;font-size:0.95rem;")
                 )
                 name_input.on(
-                    "keydown.enter",
+                    _EVENT_KEYDOWN_ENTER,
                     lambda _e, inp=name_input, cid=column.id: (
                         self._on_rename(cid, inp.value)  # type: ignore[misc]
                         if self._on_rename and inp.value
@@ -318,7 +331,7 @@ class ColumnComponent(ui.column):
                 )
             )
             add_input.on(
-                "keydown.enter",
+                _EVENT_KEYDOWN_ENTER,
                 lambda _e, inp=add_input, cid=column.id: self._handle_add_card(
                     inp, cid
                 ),
