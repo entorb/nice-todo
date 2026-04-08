@@ -1,0 +1,1 @@
+"""NiceGUI TODO Board application."""
