@@ -1,1 +1,1 @@
-"""UI layer for the TODO Board."""
+"""UI layer for the Nice TODO."""
