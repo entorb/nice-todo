@@ -518,6 +518,7 @@ def _render_board_selector(board_service: BoardService) -> None:
 def create_board_page(
     board_service: BoardService,
     export_service: ExportService,
+    apple_icon_url: str,
 ) -> None:
     """Register the NiceGUI board page route."""
 
@@ -526,6 +527,7 @@ def create_board_page(
         ui.colors(primary="#37474f", secondary="#546e7a", negative="#c62828")
         ui.add_head_html(_init_polyfill())
         ui.add_head_html(_PAGE_STYLE)
+        ui.add_head_html(f'<link rel="apple-touch-icon" href="{apple_icon_url}">')
 
         if not key:
             _render_board_selector(board_service)
