@@ -1,0 +1,35 @@
+<svg viewBox="0 0 280 280" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Nice-TODO favicon</title>
+
+  <!-- Blue rounded background -->
+  <rect width="280" height="280" rx="40" fill="#2563eb"/>
+
+  <!-- Column headers -->
+  <rect x="24" y="36" width="68" height="8" rx="4" fill="white" opacity="0.35"/>
+  <rect x="106" y="36" width="68" height="8" rx="4" fill="white" opacity="0.35"/>
+  <rect x="188" y="36" width="68" height="8" rx="4" fill="white" opacity="0.35"/>
+
+  <!-- Column backgrounds -->
+  <rect x="24" y="54" width="68" height="188" rx="8" fill="#1d4ed8"/>
+  <rect x="106" y="54" width="68" height="188" rx="8" fill="#1d4ed8"/>
+  <rect x="188" y="54" width="68" height="188" rx="8" fill="#1d4ed8"/>
+
+  <!-- Column 1 cards -->
+  <rect x="32" y="62" width="52" height="30" rx="5" fill="white" opacity="0.95"/>
+  <rect x="32" y="100" width="52" height="30" rx="5" fill="white" opacity="0.95"/>
+  <rect x="32" y="138" width="52" height="30" rx="5" fill="white" opacity="0.75"/>
+  <rect x="32" y="176" width="52" height="20" rx="5" fill="white" opacity="0.4"/>
+
+  <!-- Column 2 cards -->
+  <rect x="114" y="62" width="52" height="30" rx="5" fill="white" opacity="0.95"/>
+  <rect x="114" y="100" width="52" height="30" rx="5" fill="white" opacity="0.75"/>
+  <rect x="114" y="138" width="52" height="20" rx="5" fill="white" opacity="0.4"/>
+
+  <!-- Column 3 cards -->
+  <rect x="196" y="62" width="52" height="30" rx="5" fill="white" opacity="0.75"/>
+  <rect x="196" y="100" width="52" height="20" rx="5" fill="white" opacity="0.4"/>
+
+  <!-- Green checkmark circle -->
+  <circle cx="212" cy="212" r="56" fill="#16a34a"/>
+  <polyline points="188,212 206,232 240,192" fill="none" stroke="#22c55e" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
