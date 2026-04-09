@@ -1,5 +1,5 @@
 """
-SQLModel definitions for the TODO Board.
+SQLModel definitions for the Nice TODO.
 
 Uses Relationship() for parent-child associations with cascade deletes
 so Board.columns and Column.cards load and delete automatically.

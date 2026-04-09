@@ -1,4 +1,4 @@
-"""Markdown export service for the TODO Board."""
+"""Markdown export service for the Nice TODO."""
 
 from __future__ import annotations
 

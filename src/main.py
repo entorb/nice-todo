@@ -1,4 +1,4 @@
-"""NiceGUI TODO Board — application entry point."""
+"""NiceGUI Nice TODO — application entry point."""
 
 import os
 from pathlib import Path
@@ -45,7 +45,7 @@ create_board_page(
 )
 
 ui.run(
-    title="TODO Board",
+    title="Nice TODO",
     port=8505,
     language="en-US",
     root_path=SUBPATH,
