@@ -1,5 +1,5 @@
 """
-SQLModel-based database layer for the TODO Board.
+SQLModel-based database layer for the Nice TODO.
 
 all text inputs are stripped of white spaces prior to insert/update
 """
