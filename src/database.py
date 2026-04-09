@@ -1,4 +1,8 @@
-"""SQLModel-based database layer for the TODO Board."""
+"""
+SQLModel-based database layer for the TODO Board.
+
+all text inputs are stripped of white spaces prior to insert/update
+"""
 
 from datetime import datetime
 from pathlib import Path
@@ -49,7 +53,7 @@ class Database:
     def add_board(self, key: str, name: str) -> Board:
         """Create a new board."""
         with self.session() as s:
-            board = Board(key=key, name=name)
+            board = Board(key=key.strip().lower(), name=name.strip())
             s.add(board)
             s.commit()
             s.refresh(board)
@@ -67,7 +71,7 @@ class Database:
         """Rename the board."""
         with self.session() as s:
             if board := s.get(Board, board_id):
-                board.name = name
+                board.name = name.strip()
                 s.add(board)
                 s.commit()
 
@@ -75,7 +79,7 @@ class Database:
         """Change the board's URL key."""
         with self.session() as s:
             if board := s.get(Board, board_id):
-                board.key = new_key
+                board.key = new_key.strip()
                 s.add(board)
                 s.commit()
 
@@ -110,7 +114,7 @@ class Database:
     def create_column(self, board_id: int, name: str, position: int) -> Column:
         """Create a new column."""
         with self.session() as s:
-            col = Column(board_id=board_id, name=name, position=position)
+            col = Column(board_id=board_id, name=name.strip(), position=position)
             s.add(col)
             s.commit()
             s.refresh(col)
@@ -120,7 +124,7 @@ class Database:
         """Rename a column."""
         with self.session() as s:
             if col := s.get(Column, column_id):
-                col.name = name
+                col.name = name.strip()
                 s.add(col)
                 s.commit()
 
@@ -156,7 +160,7 @@ class Database:
     def create_card(self, column_id: int, title: str, position: int) -> Card:
         """Create a new card."""
         with self.session() as s:
-            card = Card(column_id=column_id, title=title, position=position)
+            card = Card(column_id=column_id, title=title.strip(), position=position)
             s.add(card)
             s.commit()
             s.refresh(card)
@@ -166,7 +170,7 @@ class Database:
         """Update a card's title."""
         with self.session() as s:
             if card := s.get(Card, card_id):
-                card.title = title
+                card.title = title.strip()
                 s.add(card)
                 s.commit()
 
@@ -286,7 +290,7 @@ class Database:
     def create_label(self, name: str, color: str) -> Label:
         """Create a new label."""
         with self.session() as s:
-            label = Label(name=name, color=color)
+            label = Label(name=name.strip(), color=color.strip().lower())
             s.add(label)
             s.commit()
             s.refresh(label)
@@ -296,8 +300,8 @@ class Database:
         """Update a label's name and color."""
         with self.session() as s:
             if label := s.get(Label, label_id):
-                label.name = name
-                label.color = color
+                label.name = name.strip()
+                label.color = color.strip().lower()
                 s.add(label)
                 s.commit()
 
