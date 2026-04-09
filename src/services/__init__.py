@@ -1,1 +1,1 @@
-"""Service layer for the TODO Board."""
+"""Service layer for the Nice TODO."""
