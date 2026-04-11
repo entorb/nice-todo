@@ -230,3 +230,69 @@ def pick_column_dialog(
         ui.button("Cancel", on_click=dialog.close).props("flat").classes("w-full")
     dialog.open()
     return dialog
+
+
+def move_copy_dialog(
+    action: str,
+    boards: list[Board],
+    current_board: Board,
+    source_column_name: str | None,
+    on_confirm: Callable[[int, str], None],
+) -> ui.dialog:
+    """
+    Show a dialog to move or copy a card to a board/column.
+
+    *on_confirm(column_id, action)* is called with the chosen column id
+    and the action string ("move" or "copy").
+    """
+    all_boards = [current_board, *boards]
+    label = "Move" if action == "move" else "Copy"
+
+    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
+        ui.label(label).classes("text-h6")
+
+        board_select = ui.select(
+            options={b.id: b.name for b in all_boards},
+            value=current_board.id,
+            label="Board",
+        ).classes("w-full")
+
+        # Build column options reactively
+        col_container = ui.column().classes("w-full gap-0")
+
+        def _render_columns() -> None:
+            col_container.clear()
+            bid = board_select.value
+            target = next((b for b in all_boards if b.id == bid), None)
+            if target is None or not target.columns:
+                with col_container:
+                    ui.label("No columns available").classes("text-caption text-grey")
+                return
+            cols = target.columns
+            default_id = cols[0].id
+            if source_column_name:
+                for c in cols:
+                    if c.name == source_column_name:
+                        default_id = c.id
+                        break
+            with col_container:
+                col_select = ui.select(
+                    options={c.id: c.name for c in cols},
+                    value=default_id,
+                    label="Column",
+                ).classes("w-full")
+                with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
+                    ui.button("Cancel", on_click=dialog.close).props("flat")
+                    ui.button(
+                        action.capitalize(),
+                        on_click=lambda: (
+                            on_confirm(col_select.value, action),
+                            dialog.close(),
+                        ),
+                    ).props(_BTN_PRIMARY_PROPS)
+
+        board_select.on_value_change(lambda _: _render_columns())
+        _render_columns()
+
+    dialog.open()
+    return dialog

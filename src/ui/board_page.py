@@ -136,7 +136,6 @@ class BoardPageController:
         ui.separator()
         ui.menu_item("Bulk Edit Mode", on_click=self._on_toggle_bulk)
         ui.menu_item("Rename Board", on_click=self._on_rename_board)
-        ui.menu_item("New Board", on_click=self._on_new_board)
         others = [b for b in self._bs.get_all_boards() if b.id != self._board.id]
         if others:
             ui.menu_item(
@@ -146,6 +145,7 @@ class BoardPageController:
                     lambda b: ui.navigate.to(f"/?key={b.key}"),
                 ),
             )
+        ui.menu_item("New Board", on_click=self._on_new_board)
         ui.separator()
         ui.menu_item("Manage Labels", on_click=self._on_manage_labels)
         ui.separator()
@@ -197,7 +197,7 @@ class BoardPageController:
             "on_delete": self._on_delete_card,
             "on_select": self._on_select_card,
             "on_set_label": self._on_set_card_label,
-            "on_move_to_board": self._on_move_to_board,
+            "on_move_copy": self._on_move_copy,
             "available_labels": self._labels,
         }
         with (
@@ -291,58 +291,41 @@ class BoardPageController:
         else:
             self._bulk_selected.discard(card_id)
 
-    # -- move to board --
+    # -- move / copy --
 
-    def _on_move_to_board(self, card_id: int) -> None:
+    def _on_move_copy(self, card_id: int, action: str) -> None:
         source_col_name = self._find_card_column_name(card_id)
         other_boards = [b for b in self._bs.get_all_boards() if b.id != self._board.id]
-        if not other_boards:
-            ui.notify("No other boards available", type="info")
-            return
 
-        def do_move(col_id: int, dlg: ui.dialog) -> None:
-            self._bs.move_card(card_id, col_id, self._bs.card_count(col_id))
-            dlg.close()
-            self._refresh()
-            ui.notify("Card moved", type="positive")
+        # Load full column data for other boards so the dialog can list them
+        loaded_boards: list[Board] = []
+        for b in other_boards:
+            full = self._bs.load_board(b.key)
+            if full and full.columns:
+                loaded_boards.append(full)
 
-        def on_board(target) -> None:  # noqa: ANN001
-            full = self._bs.load_board(target.key)
-            if not full or not full.columns:
-                ui.notify("Target board has no columns", type="warning")
-                return
-            matched = self._match_column(full, source_col_name)
-            if matched is not None:
-                self._bs.move_card(
-                    card_id,
-                    matched,
-                    self._bs.card_count(matched),
-                )
-                self._refresh()
-                ui.notify(f"Card moved to {target.name}", type="positive")
+        def on_confirm(col_id: int, act: str) -> None:
+            if act == "move":
+                self._bs.move_card(card_id, col_id, self._bs.card_count(col_id))
+                ui.notify("Card moved", type="positive")
             else:
-                dialogs.pick_column_dialog(full.columns, do_move)
+                self._bs.copy_card(card_id, col_id, self._bs.card_count(col_id))
+                ui.notify("Card copied", type="positive")
+            self._refresh()
 
-        dialogs.pick_board_dialog(other_boards, on_board)
+        dialogs.move_copy_dialog(
+            action,
+            loaded_boards,
+            self._board,
+            source_col_name,
+            on_confirm,
+        )
 
     def _find_card_column_name(self, card_id: int) -> str | None:
         for col in self._board.columns:
             for c in col.cards:
                 if c.id == card_id:
                     return col.name
-        return None
-
-    @staticmethod
-    def _match_column(
-        target_board: Board,
-        name: str | None,
-    ) -> int | None:
-        """Return target column id if a same-name column exists."""
-        if not name:
-            return None
-        for tc in target_board.columns:
-            if tc.name == name:
-                return tc.id  # type: ignore[return-value]
         return None
 
     # -- bulk handlers --
