@@ -175,9 +175,13 @@ def export_scope_dialog(on_export: Callable[[bool], None]) -> ui.dialog:
     return dialog
 
 
-def delete_cards_dialog(on_delete: Callable[[bool], None]) -> ui.dialog:
-    """Show a dialog to choose which cards to delete."""
-    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
+def delete_cards_dialog(
+    get_board: Callable[[], Board],
+    on_pin: Callable[[int], None],
+    on_delete: Callable[[bool], None],
+) -> ui.dialog:
+    """Show a two-step dialog: pick scope, then confirm with card list."""
+    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[350px] max-w-[500px]"):
         ui.label("Delete Cards").classes("text-h6")
         scope = ui.toggle(
             {True: "Finished Only", False: "All Cards"},
@@ -186,6 +190,50 @@ def delete_cards_dialog(on_delete: Callable[[bool], None]) -> ui.dialog:
         ui.label("Non-template cards will be deleted.").classes(
             "text-caption text-grey"
         )
+        preview = ui.column().classes("w-full gap-1 mt-2")
+
+        def _render_preview() -> None:
+            preview.clear()
+            completed_only: bool = scope.value
+            board = get_board()
+            with preview:
+                total = 0
+                for col in board.columns:
+                    victims = [
+                        c
+                        for c in col.cards
+                        if not c.is_template and (not completed_only or c.is_completed)
+                    ]
+                    if not victims:
+                        continue
+                    ui.label(col.name).classes("text-subtitle2 text-grey-8 mt-1")
+                    for card in victims:
+                        total += 1
+                        with (
+                            ui.row()
+                            .classes("items-center w-full no-wrap gap-1")
+                            .style(
+                                "padding:2px 4px;border-radius:4px;background:#fafafa;"
+                            )
+                        ):
+                            ui.label(card.title).classes("flex-grow text-body2").style(
+                                "overflow:hidden;text-overflow:ellipsis;"
+                            )
+                            ui.button(
+                                icon="push_pin",
+                                on_click=lambda _, cid=card.id: (
+                                    on_pin(cid),
+                                    _render_preview(),
+                                ),
+                            ).props("flat dense round size=xs").tooltip(
+                                "Pin as template (exclude)"
+                            )
+                if total == 0:
+                    ui.label("No cards to delete.").classes("text-caption text-grey")
+
+        scope.on_value_change(lambda _: _render_preview())
+        _render_preview()
+
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
