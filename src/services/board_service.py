@@ -9,9 +9,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from src.models import Card
+
 if TYPE_CHECKING:
     from src.database import Database
-    from src.models import Board, Card, Column, Label
+    from src.models import Board, Column, Label
 
 
 class BoardService:
@@ -94,6 +96,19 @@ class BoardService:
     def move_card(self, card_id: int, target_column_id: int, position: int) -> None:
         """Move a card to a target column at the given position."""
         self._db.move_card(card_id, target_column_id, position)
+
+    def copy_card(self, card_id: int, target_column_id: int, position: int) -> Card:
+        """Copy a card to a target column at the given position."""
+        with self._db.session() as s:
+            original = s.get(Card, card_id)
+            if original is None:
+                msg = f"Card {card_id} not found"
+                raise ValueError(msg)
+            new_card = self._db.create_card(target_column_id, original.title, position)
+            self._db.update_card_label(new_card.id, original.label_id)  # type: ignore[arg-type]
+            if original.is_template:
+                self._db.update_card_template(new_card.id, is_template=True)  # type: ignore[arg-type]
+            return new_card
 
     def card_count(self, column_id: int) -> int:
         """Return the number of cards in a column."""

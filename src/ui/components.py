@@ -65,7 +65,7 @@ class CardComponent(ui.card):
         on_delete: Callable[[int], None] | None = None,
         on_select: Callable[[int, bool], None] | None = None,
         on_set_label: Callable[[int, int | None], None] | None = None,
-        on_move_to_board: Callable[[int], None] | None = None,
+        on_move_copy: Callable[[int, str], None] | None = None,
         available_labels: list[Label] | None = None,
         bulk_mode: bool = False,
     ) -> None:
@@ -78,7 +78,7 @@ class CardComponent(ui.card):
         self._on_delete = on_delete
         self._on_select = on_select
         self._on_set_label = on_set_label
-        self._on_move_to_board = on_move_to_board
+        self._on_move_copy = on_move_copy
 
         style = self._compute_style(card, label)
         text_color = _contrast_color(label.color) if label else _COLOR_TEXT_DARK
@@ -195,12 +195,29 @@ class CardComponent(ui.card):
             "Template" if card.is_template else "Make template"
         )
 
-        # Move to board button
-        if self._on_move_to_board:
-            ui.button(
-                icon="drive_file_move",
-                on_click=lambda _, cid=card.id: self._on_move_to_board(cid),  # type: ignore[misc]
-            ).props(_ICON_BTN_PROPS).style(_ICON_BTN_OPACITY).tooltip("Move to board")
+        # Move / Copy menu
+        if self._on_move_copy:
+            with (
+                ui.button(icon="drive_file_move")
+                .props(_ICON_BTN_PROPS)
+                .style(_ICON_BTN_OPACITY)
+                .tooltip("Move / Copy"),
+                ui.menu() as mc_menu,
+            ):
+                ui.menu_item(
+                    "Move to…",
+                    on_click=lambda _, cid=card.id: (
+                        self._on_move_copy(cid, "move"),
+                        mc_menu.close(),
+                    ),
+                )
+                ui.menu_item(
+                    "Copy to…",
+                    on_click=lambda _, cid=card.id: (
+                        self._on_move_copy(cid, "copy"),
+                        mc_menu.close(),
+                    ),
+                )
 
         # Delete button
         ui.button(
