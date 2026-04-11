@@ -372,6 +372,11 @@ class BoardPageController:
         dialogs.export_scope_dialog(on_export)
 
     def _on_delete_cards(self) -> None:
+        def on_pin(card_id: int) -> None:
+            self._bs.toggle_card_template(card_id, is_template=True)
+            # Reload board data so the preview reflects the change
+            self._reload_data()
+
         def on_delete(completed_only: bool) -> None:  # noqa: FBT001
             if completed_only:
                 self._bs.delete_completed_cards(self._board.id)
@@ -379,7 +384,7 @@ class BoardPageController:
                 self._bs.delete_all_cards(self._board.id)
             self._refresh()
 
-        dialogs.delete_cards_dialog(on_delete)
+        dialogs.delete_cards_dialog(lambda: self._board, on_pin, on_delete)
 
     def _on_manage_labels(self) -> None:
         """Open label management dialog."""
