@@ -285,7 +285,7 @@ class Database:
     def get_labels(self) -> list[Label]:
         """Get all labels."""
         with self.session() as s:
-            return list(s.exec(select(Label)).all())
+            return list(s.exec(select(Label).order_by(Label.name)).all())
 
     def create_label(self, name: str, color: str) -> Label:
         """Create a new label."""
