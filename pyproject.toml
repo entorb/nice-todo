@@ -17,3 +17,15 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.15.9",
 ]
+
+[tool.vulture]
+paths = ["src"]
+exclude = ["src/models.py"]
+ignore_names = [
+    "_auth_middleware",
+    "_login_submit",
+    "board_page",
+    "date_created",
+    "last_login",
+    "login_page",
+]
