@@ -487,10 +487,12 @@ class BoardPageController:
 def _render_board_selector(board_service: BoardService) -> None:
     """Show a list of all boards when no key is provided."""
     all_boards = board_service.get_all_boards()
+
+    # if no boards in DB
     if not all_boards:
         ui.label("No boards yet").classes("text-h5 text-white q-pa-lg")
         return
-    ui.label("Select a Board").classes("text-h5").style(
+    ui.label("Select Board").classes("text-h5").style(
         "font-weight:700;color:white;letter-spacing:-0.5px;"
     )
     with ui.column().classes("gap-2 q-mt-md"):
@@ -517,15 +519,16 @@ def create_board_page(
         ui.add_head_html(_PAGE_STYLE)
         ui.add_head_html(f'<link rel="apple-touch-icon" href="{apple_icon_url}">')
 
+        # no key parameter -> board selection
         if not key:
             _render_board_selector(board_service)
             return
 
         board = board_service.load_board(key)
+
+        # no board of that key
         if board is None:
-            ui.label("Board not found").classes(
-                "text-h4 text-negative q-pa-lg",
-            )
+            _render_board_selector(board_service)
             return
 
         ctrl = BoardPageController(key, board_service, export_service)
