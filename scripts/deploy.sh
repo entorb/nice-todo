@@ -17,14 +17,14 @@ uv run ruff check
 python scripts/gen_requirements.py
 
 echo copying
-rsync -uz requirements.txt entorb@entorb.net:nicegui-todo/
-rsync -ruzv --no-links --delete --delete-excluded --exclude __pycache__ src/ entorb@entorb.net:nicegui-todo/src/
+rsync -uz requirements.txt entorb@entorb.net:nice-todo/
+rsync -ruzv --no-links --delete --delete-excluded --exclude __pycache__ src/ entorb@entorb.net:nice-todo/src/
 
 # echo installing packages
-ssh entorb@entorb.net "pip3.11 install --user -r nicegui-todo/requirements.txt > /dev/null"
+ssh entorb@entorb.net "pip3.11 install --user -r nice-todo/requirements.txt > /dev/null"
 
-echo restarting nicegui-todo
-ssh entorb@entorb.net "supervisorctl restart nicegui-todo"
+echo restarting nice-todo
+ssh entorb@entorb.net "supervisorctl restart nice-todo"
 
 echo DONE
 
