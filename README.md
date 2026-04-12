@@ -44,16 +44,16 @@ python3.11 -m src.delete_board <board_id_or_key>
 
 ## SonarQube Code Analysis
 
-- Report at [sonarcloud.io](https://sonarcloud.io/summary/overall?id=entorb_nicegui-todo&branch=main)
-- Or per API as [json](https://sonarcloud.io/api/issues/search?componentKeys=entorb_nicegui-todo&ps=500)
+- Report at [sonarcloud.io](https://sonarcloud.io/summary/overall?id=entorb_nice-todo&branch=main)
+- Or per API as [json](https://sonarcloud.io/api/issues/search?componentKeys=entorb_nice-todo&ps=500)
 
 ## Uberspace Hosting
 
-`~/etc/services.d/nicegui-todo.ini`
+`~/etc/services.d/nice-todo.ini`
 
 ```ini
-[program:nicegui-todo]
-directory=%(ENV_HOME)s/nicegui-todo
+[program:nice-todo]
+directory=%(ENV_HOME)s/nice-todo
 command=python3.11 -O -m src.main
 # `startsecs` is set by Uberspace monitoring team, to prevent a broken service from looping
 startsecs=30
@@ -75,5 +75,5 @@ uberspace web backend set /nice-todo --http --port 8505 --remove-prefix
 logs
 
 ```sh
-supervisorctl tail -f nicegui-todo
+supervisorctl tail -f nice-todo
 ```
