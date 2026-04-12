@@ -9,7 +9,7 @@ from nicegui import ui
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from src.models import Board, Column, Label
+    from src.models import Board, Label
 
 # Shared style constants
 _DIALOG_ACTIONS_CLASSES = "w-full justify-end gap-2 mt-4"
@@ -255,24 +255,6 @@ def pick_board_dialog(
             ui.button(
                 b.name,
                 on_click=lambda _, board=b: (dialog.close(), on_select(board)),
-            ).classes("w-full").props("flat align=left").style("text-transform:none;")
-        ui.separator()
-        ui.button("Cancel", on_click=dialog.close).props("flat").classes("w-full")
-    dialog.open()
-    return dialog
-
-
-def pick_column_dialog(
-    columns: list[Column],
-    on_select: Callable[[int, ui.dialog], None],
-) -> ui.dialog:
-    """Show a dialog to pick a target column."""
-    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
-        ui.label("Pick Target Column").classes("text-h6")
-        for col in columns:
-            ui.button(
-                col.name,
-                on_click=lambda _, cid=col.id: on_select(cid, dialog),
             ).classes("w-full").props("flat align=left").style("text-transform:none;")
         ui.separator()
         ui.button("Cancel", on_click=dialog.close).props("flat").classes("w-full")
