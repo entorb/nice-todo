@@ -1,6 +1,6 @@
 {
 	"sonarlint.connectedMode.project": {
 		"connectionId": "entorb",
-		"projectKey": "entorb_nicegui-todo"
+		"projectKey": "entorb_nice-todo"
 	}
 }
