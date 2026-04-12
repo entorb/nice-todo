@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 _DIALOG_ACTIONS_CLASSES = "w-full justify-end gap-2 mt-4"
 _DIALOG_CARD_CLASSES = "p-4 min-w-[300px]"
 _BTN_PRIMARY_PROPS = "color=primary"
+_STYLE_NOTE = "text-caption text-grey"
 
 
 def confirm_dialog(message: str, on_confirm: Callable[[], None]) -> ui.dialog:
@@ -158,12 +159,12 @@ def _save_rename_board(  # noqa: PLR0913
 
 
 def export_scope_dialog(on_export: Callable[[bool], None]) -> ui.dialog:
-    """Show a dialog to choose export scope (all or completed only)."""
+    """Show a dialog to choose export scope (completed or all)."""
     with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Export").classes("text-h6")
         scope = ui.toggle(
-            {False: "All Cards", True: "Completed Only"},
-            value=False,
+            {True: "Completed Only", False: "All Cards"},
+            value=True,
         ).classes("w-full")
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
@@ -187,9 +188,7 @@ def delete_cards_dialog(
             {True: "Finished Only", False: "All Cards"},
             value=True,
         ).classes("w-full")
-        ui.label("Non-template cards will be deleted.").classes(
-            "text-caption text-grey"
-        )
+        ui.label("Pinned cards will not be deleted.").classes(_STYLE_NOTE)
         preview = ui.column().classes("w-full gap-1 mt-2")
 
         def _render_preview() -> None:
@@ -229,7 +228,7 @@ def delete_cards_dialog(
                                 "Pin as template (exclude)"
                             )
                 if total == 0:
-                    ui.label("No cards to delete.").classes("text-caption text-grey")
+                    ui.label("No cards to delete.").classes(_STYLE_NOTE)
 
         scope.on_value_change(lambda _: _render_preview())
         _render_preview()
@@ -296,7 +295,7 @@ def move_copy_dialog(
             target = next((b for b in all_boards if b.id == bid), None)
             if target is None or not target.columns:
                 with col_container:
-                    ui.label("No columns available").classes("text-caption text-grey")
+                    ui.label("No columns available").classes(_STYLE_NOTE)
                 return
             cols = target.columns
             default_id = cols[0].id
