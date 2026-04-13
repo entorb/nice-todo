@@ -92,3 +92,4 @@ repos:
     rev: v2.16
     hooks:
       - id: vulture
+        pass_filenames: false
