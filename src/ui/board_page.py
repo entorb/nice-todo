@@ -53,6 +53,11 @@ _PAGE_STYLE = (
     ".board-columns .board-col{min-width:100% !important;max-width:100% !important;}"
     ".nicegui-content{padding:8px 8px !important;}"
     "}"
+    ".board-switcher .q-field__native{min-height:unset !important;"
+    "padding:0 !important;line-height:1.4 !important;}"
+    ".board-switcher .q-field__control{height:auto !important;"
+    "min-height:unset !important;padding:0 4px !important;}"
+    ".board-switcher .q-field__marginal{height:auto !important;}"
     ".card-dark .q-btn,.card-dark .q-icon,"
     ".card-dark .q-field__native,.card-dark .q-checkbox__inner{color:#222 !important}"
     ".card-light .q-btn,.card-light .q-icon,"
@@ -113,9 +118,7 @@ class BoardPageController:
 
     def _render_heading(self) -> None:
         with ui.row().classes("items-center gap-3 q-mb-md"):
-            ui.label(self._board.name).classes("text-h5").style(
-                "font-weight:700;color:white;letter-spacing:-0.5px;"
-            )
+            self._render_board_switcher()
             ui.button(
                 icon="sync",
                 on_click=self._refresh,
@@ -130,6 +133,25 @@ class BoardPageController:
                 ui.menu(),
             ):
                 self._render_menu()
+
+    def _render_board_switcher(self) -> None:
+        """Render a dropdown to quickly switch between boards."""
+        all_boards = self._bs.get_all_boards()
+        if len(all_boards) <= 1:
+            ui.label(self._board.name).classes("text-h5").style(
+                "font-weight:700;color:white;letter-spacing:-0.5px;"
+            )
+            return
+        options = {b.key: b.name for b in all_boards}
+        ui.select(
+            options=options,
+            value=self._key,
+            on_change=lambda e: ui.navigate.to(f"/?key={e.value}"),
+        ).props('dense borderless dark color="white"').classes(
+            "text-white board-switcher",
+        ).style(
+            "min-width:140px;font-weight:700;font-size:1.5rem;letter-spacing:-0.5px;"
+        ).tooltip("Switch board")
 
     def _render_menu(self) -> None:
         ui.menu_item("Add Column", on_click=self._on_add_column)
