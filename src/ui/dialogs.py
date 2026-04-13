@@ -80,22 +80,29 @@ def _save_label(
     dialog.close()
 
 
-def export_dialog(markdown: str) -> ui.dialog:
-    """Show generated markdown with a copy-to-clipboard button."""
+def export_dialog(content: str, fmt: str = "markdown") -> ui.dialog:
+    """Show export result: rendered HTML or markdown in a textarea."""
     with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[400px]"):
         ui.label("Export").classes("text-h6")
-        textarea = (
-            ui.textarea(
-                value=markdown,
+        if fmt == "html":
+            ui.html(content).classes("w-full").style(
+                "max-height:60vh;overflow:auto;padding:8px;"
             )
-            .classes("w-full font-mono")
-            .props("readonly autogrow")
-        )
+        else:
+            textarea = (
+                ui.textarea(
+                    value=content,
+                )
+                .classes("w-full font-mono")
+                .props("readonly autogrow")
+            )
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button(
                 "Copy to clipboard",
                 icon="content_copy",
-                on_click=lambda: _copy_to_clipboard(textarea.value or ""),
+                on_click=lambda: _copy_to_clipboard(
+                    content if fmt == "html" else (textarea.value or "")
+                ),
             ).props(_BTN_PRIMARY_PROPS)
             ui.button("Close", on_click=dialog.close).props("flat")
     dialog.open()
@@ -158,19 +165,25 @@ def _save_rename_board(  # noqa: PLR0913
     dialog.close()
 
 
-def export_scope_dialog(on_export: Callable[[bool], None]) -> ui.dialog:
-    """Show a dialog to choose export scope (completed or all)."""
+def export_scope_dialog(
+    on_export: Callable[[bool, str], None],
+) -> ui.dialog:
+    """Show a dialog to choose export scope and format."""
     with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Export").classes("text-h6")
         scope = ui.toggle(
             {True: "Completed Only", False: "All Cards"},
             value=True,
         ).classes("w-full")
+        fmt = ui.toggle(
+            {"markdown": "Markdown", "html": "HTML"},
+            value="markdown",
+        ).classes("w-full")
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Export",
-                on_click=lambda: (dialog.close(), on_export(scope.value)),
+                on_click=lambda: (dialog.close(), on_export(scope.value, fmt.value)),
             ).props(_BTN_PRIMARY_PROPS)
     dialog.open()
     return dialog
