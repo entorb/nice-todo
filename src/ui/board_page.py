@@ -7,7 +7,14 @@ from typing import TYPE_CHECKING
 from nicegui import ui
 
 from src.ui import dialogs
-from src.ui.components import ColumnComponent
+from src.ui._shared import (
+    LABEL_ICON_REMOVE,
+    PRIO_ICON_CLEAR,
+    PRIO_ICON_SET,
+    PRIO_ICON_UNSET,
+    TEMPLATE_ICON_SET,
+)
+from src.ui.column_component import ColumnComponent
 
 if TYPE_CHECKING:
     from src.models import Board, Label
@@ -120,6 +127,14 @@ class BoardPageController:
         with ui.row().classes("items-center gap-3 q-mb-md"):
             self._render_board_switcher()
             ui.button(
+                icon="checklist",
+                on_click=self._on_toggle_bulk,
+            ).props("flat dense round").classes("text-white").tooltip("Bulk edit mode")
+            ui.button(
+                icon="sort",
+                on_click=self._on_sort_cards,
+            ).props("flat dense round").classes("text-white").tooltip("Sort cards")
+            ui.button(
                 icon="sync",
                 on_click=self._refresh,
             ).props("flat dense round").classes("text-white").tooltip(
@@ -178,9 +193,17 @@ class BoardPageController:
     def _render_bulk_bar(self) -> None:
         if not self._bulk_active:
             return
-        with ui.row().classes("items-center gap-2 q-mb-md flex-wrap"):
+        _btn = "flat dense round"
+        _btn_style = "color:white !important;"
+        _unset_btn = "dense round"
+        _unset_style = (
+            "background-color:rgba(255,255,255,0.25) !important;color:white !important;"
+        )
+        with ui.row().classes("items-center gap-1 q-mb-md flex-wrap"):
             ui.icon("checklist").classes("text-white")
             ui.label("Select cards, then:").classes("text-body2 text-white")
+
+            # Label buttons (colored chips)
             for lbl in self._labels:
                 ui.button(
                     lbl.name,
@@ -192,29 +215,50 @@ class BoardPageController:
                 )
             if self._labels:
                 ui.button(
-                    "Remove Label",
+                    icon=LABEL_ICON_REMOVE,
                     on_click=lambda: self._on_bulk_label(None),
-                ).props("flat outline").style(_BULK_BTN_STYLE)
+                ).props(_unset_btn).style(_unset_style).tooltip("Remove label")
+
             ui.separator().props("vertical")
+
+            # Template
             ui.button(
-                "Set Template",
-                icon="push_pin",
+                icon=TEMPLATE_ICON_SET,
                 on_click=lambda: self._on_bulk_template(is_template=True),
-            ).props("outline").style(_BULK_BTN_STYLE)
+            ).props(_btn).style(_btn_style).tooltip("Set template")
             ui.button(
-                "Unset Template",
-                icon="push_pin",
+                icon=TEMPLATE_ICON_SET,
                 on_click=lambda: self._on_bulk_template(is_template=False),
-            ).props("flat outline").style(_BULK_BTN_STYLE)
+            ).props(_unset_btn).style(_unset_style).tooltip("Unset template")
+
+            ui.separator().props("vertical")
+
+            # Prio flag
             ui.button(
-                "Cancel",
+                icon=PRIO_ICON_SET,
+                on_click=lambda: self._on_bulk_prio(prio=True),
+            ).props(f"{_btn} color=red").tooltip("Mark important")
+            ui.button(
+                icon=PRIO_ICON_UNSET,
+                on_click=lambda: self._on_bulk_prio(prio=False),
+            ).props(_btn).style(_btn_style).tooltip("Mark not important")
+            ui.button(
+                icon=PRIO_ICON_CLEAR,
+                on_click=lambda: self._on_bulk_prio(prio=None),
+            ).props(_unset_btn).style(_unset_style).tooltip("Clear flag")
+
+            ui.separator().props("vertical")
+
+            ui.button(
+                icon="close",
                 on_click=self._on_toggle_bulk,
-            ).props("flat").style("text-transform:none;")
+            ).props(_btn).style(_btn_style).tooltip("Cancel bulk edit")
 
     def _render_columns(self) -> None:
         cbs = {
             "on_toggle_completed": self._on_toggle_completed,
             "on_toggle_template": self._on_toggle_template,
+            "on_toggle_prio": self._on_toggle_prio,
             "on_edit_title": self._on_edit_title,
             "on_delete": self._on_delete_card,
             "on_select": self._on_select_card,
@@ -284,6 +328,10 @@ class BoardPageController:
 
     def _on_toggle_template(self, card_id: int, is_template: bool) -> None:  # noqa: FBT001
         self._bs.toggle_card_template(card_id, is_template=is_template)
+        self._refresh()
+
+    def _on_toggle_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
+        self._bs.toggle_card_prio(card_id, prio)
         self._refresh()
 
     def _on_delete_card(self, card_id: int) -> None:
@@ -369,6 +417,16 @@ class BoardPageController:
             self._bs.bulk_set_template(
                 list(self._bulk_selected),
                 is_template=is_template,
+            )
+            self._bulk_selected = set()
+            self._bulk_active = False
+            self._refresh()
+
+    def _on_bulk_prio(self, *, prio: bool | None) -> None:
+        if self._bulk_selected:
+            self._bs.bulk_set_prio(
+                list(self._bulk_selected),
+                prio,
             )
             self._bulk_selected = set()
             self._bulk_active = False
