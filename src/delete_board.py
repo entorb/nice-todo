@@ -12,12 +12,10 @@ from sqlmodel import select
 from src.database import Database
 from src.models import Board
 
-_EXPECTED_ARGS = 2
-
 
 def main() -> None:
     """Delete a board by ID or key."""
-    if len(sys.argv) != _EXPECTED_ARGS:
+    if len(sys.argv) != 2:  # noqa: PLR2004
         print(
             "Usage: python -m src.delete_board <board_id_or_key>",
             file=sys.stderr,
