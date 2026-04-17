@@ -97,13 +97,18 @@ def export_dialog(content: str, fmt: str = "markdown") -> ui.dialog:
                 .props("readonly autogrow")
             )
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
-            ui.button(
-                "Copy to clipboard",
-                icon="content_copy",
-                on_click=lambda: _copy_to_clipboard(
-                    content if fmt == "html" else (textarea.value or "")
-                ),
-            ).props(_BTN_PRIMARY_PROPS)
+            if fmt == "html":
+                ui.button(
+                    "Copy to clipboard",
+                    icon="content_copy",
+                    on_click=lambda: _copy_html_to_clipboard(content),
+                ).props(_BTN_PRIMARY_PROPS)
+            else:
+                ui.button(
+                    "Copy to clipboard",
+                    icon="content_copy",
+                    on_click=lambda: _copy_to_clipboard(textarea.value or ""),
+                ).props(_BTN_PRIMARY_PROPS)
             ui.button("Close", on_click=dialog.close).props("flat")
     dialog.open()
     return dialog
@@ -113,6 +118,19 @@ async def _copy_to_clipboard(text: str) -> None:
     """Copy text to clipboard via browser JS."""
     escaped = text.replace("\\", "\\\\").replace("`", "\\`")
     await ui.run_javascript(f"navigator.clipboard.writeText(`{escaped}`)")
+    ui.notify("Copied to clipboard", type="positive")
+
+
+async def _copy_html_to_clipboard(html: str) -> None:
+    """Copy HTML as rich text so pasting gives formatted content."""
+    escaped = html.replace("\\", "\\\\").replace("`", "\\`")
+    js = (
+        "const html = `" + escaped + "`;"
+        "const blob = new Blob([html], {type: 'text/html'});"
+        "const item = new ClipboardItem({'text/html': blob});"
+        "navigator.clipboard.write([item]);"
+    )
+    await ui.run_javascript(js)
     ui.notify("Copied to clipboard", type="positive")
 
 
