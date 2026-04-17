@@ -27,6 +27,7 @@ class Card(SQLModel, table=True):
     position: int = Field(default=0, nullable=False)
     is_template: bool = Field(default=False, nullable=False)
     label_id: int | None = Field(default=None, foreign_key="label.id")
+    prio: bool | None = Field(default=None, nullable=True)
     date_created: datetime = Field(default_factory=datetime.now, nullable=False)
     date_completed: datetime | None = Field(default=None, nullable=True)
 

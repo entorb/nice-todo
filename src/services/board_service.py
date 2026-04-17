@@ -10,6 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 from src.models import Card
+from src.services.sort import card_sort_key
 
 if TYPE_CHECKING:
     from src.database import Database
@@ -89,6 +90,10 @@ class BoardService:
         """Set a card's template flag."""
         self._db.update_card_template(card_id, is_template=is_template)
 
+    def toggle_card_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
+        """Cycle a card's prio flag (True / False / None)."""
+        self._db.update_card_prio(card_id, prio)
+
     def delete_card(self, card_id: int) -> None:
         """Delete a card."""
         self._db.delete_card(card_id)
@@ -108,6 +113,8 @@ class BoardService:
             self._db.update_card_label(new_card.id, original.label_id)  # type: ignore[arg-type]
             if original.is_template:
                 self._db.update_card_template(new_card.id, is_template=True)  # type: ignore[arg-type]
+            if original.prio is not None:
+                self._db.update_card_prio(new_card.id, original.prio)  # type: ignore[arg-type]
             return new_card
 
     def card_count(self, column_id: int) -> int:
@@ -125,6 +132,10 @@ class BoardService:
     def bulk_set_template(self, card_ids: list[int], *, is_template: bool) -> None:
         """Set template flag on multiple cards at once."""
         self._db.bulk_set_template(card_ids, is_template=is_template)
+
+    def bulk_set_prio(self, card_ids: list[int], prio: bool | None) -> None:  # noqa: FBT001
+        """Set prio flag on multiple cards at once."""
+        self._db.bulk_set_prio(card_ids, prio)
 
     # Labels
 
@@ -171,20 +182,13 @@ class BoardService:
     # Bulk delete
 
     def sort_cards(self, board_id: int, labels: list[Label]) -> None:
-        """Sort cards: uncompleted first, then completed, by label then title."""
-        label_map = {lb.id: (lb.name or "") for lb in labels}
+        """Sort cards per column with custom ordering."""
+        label_map: dict[int | None, str] = {lb.id: (lb.name or "") for lb in labels}
+        key_fn = card_sort_key(label_map)
         columns = self._db.get_columns(board_id)
         for col in columns:
             cards = self._db.get_cards(col.id)  # type: ignore[arg-type]
-
-            def sort_key(c: Card) -> tuple[bool, str, str]:
-                return (
-                    c.is_completed,
-                    label_map.get(c.label_id, "") if c.label_id else "",  # type: ignore[arg-type]
-                    c.title.lower(),
-                )
-
-            cards.sort(key=sort_key)
+            cards.sort(key=key_fn)
             positions = [(c.id, idx) for idx, c in enumerate(cards)]
             self._db.update_card_positions(positions)  # type: ignore[arg-type]
 
