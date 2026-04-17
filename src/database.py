@@ -4,6 +4,7 @@ SQLModel-based database layer for the Nice TODO.
 all text inputs are stripped of white spaces prior to insert/update
 """
 
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -24,8 +25,26 @@ class Database:
         )
 
     def init(self) -> None:
-        """Create all tables if they don't exist."""
+        """Create all tables if they don't exist, and run migrations."""
         SQLModel.metadata.create_all(self._engine)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Add missing columns to existing tables based on SQLModel metadata."""
+        db_path = str(self._engine.url).replace("sqlite:///", "")
+        with sqlite3.connect(db_path) as conn:
+            for table in SQLModel.metadata.sorted_tables:
+                existing = {
+                    row[1] for row in conn.execute(f"PRAGMA table_info({table.name})")
+                }
+                if not existing:
+                    continue
+                for col in table.columns:
+                    if col.name not in existing:
+                        col_type = col.type.compile(dialect=self._engine.dialect)
+                        conn.execute(
+                            f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type}"
+                        )
 
     def session(self) -> Session:
         """Create a new database session."""
@@ -190,6 +209,14 @@ class Database:
                 s.add(card)
                 s.commit()
 
+    def update_card_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
+        """Set a card's prio flag (True, False, or None)."""
+        with self.session() as s:
+            if card := s.get(Card, card_id):
+                card.prio = prio
+                s.add(card)
+                s.commit()
+
     def update_card_label(self, card_id: int, label_id: int | None) -> None:
         """Set or clear a card's label."""
         with self.session() as s:
@@ -277,6 +304,15 @@ class Database:
             for card_id in card_ids:
                 if card := s.get(Card, card_id):
                     card.is_template = is_template
+                    s.add(card)
+            s.commit()
+
+    def bulk_set_prio(self, card_ids: list[int], prio: bool | None) -> None:  # noqa: FBT001
+        """Set prio flag on multiple cards at once."""
+        with self.session() as s:
+            for card_id in card_ids:
+                if card := s.get(Card, card_id):
+                    card.prio = prio
                     s.add(card)
             s.commit()
 

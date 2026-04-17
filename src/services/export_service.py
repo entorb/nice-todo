@@ -5,6 +5,8 @@ from __future__ import annotations
 from html import escape
 from typing import TYPE_CHECKING
 
+from src.services.sort import card_sort_key
+
 if TYPE_CHECKING:
     from src.models import Board, Card, Label
 
@@ -33,7 +35,10 @@ class ExportService:
         completed_only: bool = False,
     ) -> str:
         """Export cards as markdown."""
-        label_map = {lb.id: lb.name for lb in labels if lb.id is not None}
+        label_map: dict[int | None, str] = {
+            lb.id: lb.name for lb in labels if lb.id is not None
+        }
+        key_fn = card_sort_key(label_map)
         lines = [f"## {board.name}", ""]
         for col in board.columns:
             cards = (
@@ -43,7 +48,7 @@ class ExportService:
             )
             if not cards:
                 continue
-            cards.sort(key=lambda c: c.position)
+            cards.sort(key=key_fn)
             lines.append(f"### {col.name}")
             lines.extend(
                 self._format_card_md(card, label_map, completed_only=completed_only)
@@ -60,7 +65,10 @@ class ExportService:
         completed_only: bool = False,
     ) -> str:
         """Export cards as HTML."""
-        label_map = {lb.id: lb.name for lb in labels if lb.id is not None}
+        label_map: dict[int | None, str] = {
+            lb.id: lb.name for lb in labels if lb.id is not None
+        }
+        key_fn = card_sort_key(label_map)
         parts = [f"<h2>{escape(board.name)}</h2>"]
         for col in board.columns:
             cards = (
@@ -70,7 +78,7 @@ class ExportService:
             )
             if not cards:
                 continue
-            cards.sort(key=lambda c: c.position)
+            cards.sort(key=key_fn)
             parts.append(f"<h3>{escape(col.name)}</h3>")
             parts.append("<ul>")
             parts.extend(
@@ -92,6 +100,9 @@ class ExportService:
         if card.label_id and card.label_id in label_map:
             suffix = f" ({label_map[card.label_id]})"
 
+        if card.prio is True:
+            suffix += " ⚑"
+
         if completed_only:
             prefix = "- "
         else:
@@ -112,6 +123,9 @@ class ExportService:
         suffix = ""
         if card.label_id and card.label_id in label_map:
             suffix = f" <em>({escape(label_map[card.label_id])})</em>"
+
+        if card.prio is True:
+            suffix += ' <span style="color:red;" title="Important">⚑</span>'
 
         if completed_only:
             return (
