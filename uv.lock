@@ -1627,7 +1627,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "nicegui", specifier = ">=3.9.0" },
+    { name = "nicegui", specifier = ">=3.10.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "sqlmodel", specifier = ">=0.0.38" },
 ]

@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "nicegui>=3.9.0",
+    "nicegui>=3.10.0",
     "python-dotenv>=1.2.2",
     "sqlmodel>=0.0.38",
 ]
