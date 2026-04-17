@@ -22,18 +22,21 @@ def card_sort_key(
 ) -> callable:
     """Return a sort-key function for cards."""
 
-    def key(c: Card) -> tuple[bool, int, str, str]:
+    def key(c: Card) -> tuple[bool, int, bool, str, str]:
         if c.is_completed:
             return (
                 True,
                 _prio_rank(c),
+                False,
                 c.date_completed.isoformat() if c.date_completed else "",
                 "",
             )
+        label_name = label_map.get(c.label_id, "") if c.label_id else ""  # type: ignore[arg-type]
         return (
             False,
             _prio_rank(c),
-            label_map.get(c.label_id, "") if c.label_id else "",  # type: ignore[arg-type]
+            not bool(label_name),  # False (has label) sorts before True (no label)
+            label_name,
             c.date_created.isoformat(),
         )
 
