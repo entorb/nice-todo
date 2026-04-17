@@ -12,6 +12,7 @@ Menke
 mousedown
 mouseup
 NiceGUI
+Prio
 SonarCloud
 SonarQube
 startsecs
