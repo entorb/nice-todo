@@ -2,6 +2,14 @@
 
 A Kanban-style task board built with NiceGUI and SQLModel.
 
+## Features
+
+- **Cards** — Arranges in columns
+- **Card Properties** — color/label, high priority, template (not deleted upon board reset)
+- **Bulk Operations** — Select multiple cards to edit
+- **Sorting** — Auto-sort cards by priority, completion, labels, date
+- **Export** — Export cards as Markdown or HTML (all or completed only)
+
 ## Prerequisites
 
 - Python 3.11+
@@ -25,15 +33,17 @@ Generate a key with: `python -c "import secrets; print(secrets.token_urlsafe(32)
 
 ```sh
 uv run python -m src.main
+# or
+./scripts/run_nice.sh
 ```
 
-Open <http://localhost:8505/> in your browser. On first visit per device you'll be asked for the access key once; a persistent cookie is set so you won't be asked again.
+Open <http://localhost:8505/> in your browser. On first visit per device you'll be asked to enter `NICEGUI_API_KEY`; a persistent cookie is set so you won't be asked again.
 
-## Admin: Delete a Board
+## Admin: Create or Delete a Board
 
 ```sh
-uv run python -m src.delete_board <board_id_or_key>
-python3.11 -m src.delete_board <board_id_or_key>
+./scripts/create_board.sh <board_name>
+./scripts/delete_board.sh <board_id_or_key>
 ```
 
 ## Tech Stack
