@@ -1,5 +1,7 @@
 # Python
 
+See [README.md](README.md) for a functional overview.
+
 - use Python 3.11 and best practice
 - use uv to install packages and to run the application
 - use strict type hints
