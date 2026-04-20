@@ -131,7 +131,7 @@ class BoardPageController:
                 on_click=self._on_toggle_bulk,
             ).props("flat dense round").classes("text-white").tooltip("Bulk edit mode")
             ui.button(
-                icon="sort",
+                icon="swap_vert",
                 on_click=self._on_sort_cards,
             ).props("flat dense round").classes("text-white").tooltip("Sort cards")
             ui.button(
