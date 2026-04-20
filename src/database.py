@@ -8,7 +8,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from src.models import Board, Card, Column, Label
 
@@ -243,7 +243,7 @@ class Database:
                 s.commit()
 
     def delete_completed_non_template_cards(self, board_id: int) -> int:
-        """Delete completed non-template cards across all board columns."""
+        """Delete completed non-template cards and unset date_completed on templates."""
         with self.session() as s:
             col_ids = [
                 c.id
@@ -259,11 +259,18 @@ class Database:
             ).all()
             for card in cards:
                 s.delete(card)
+            # Unset date_completed for all template cards on the board
+            s.exec(
+                update(Card)
+                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
+                .where(Card.is_template == True)  # noqa: E712
+                .values(date_completed=None)
+            )
             s.commit()
             return len(cards)
 
     def delete_all_non_template_cards(self, board_id: int) -> int:
-        """Delete all non-template cards across all board columns."""
+        """Delete all non-template cards and unset date_completed on templates."""
         with self.session() as s:
             col_ids = [
                 c.id
@@ -278,6 +285,13 @@ class Database:
             ).all()
             for card in cards:
                 s.delete(card)
+            # Unset date_completed for all template cards on the board
+            s.exec(
+                update(Card)
+                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
+                .where(Card.is_template == True)  # noqa: E712
+                .values(date_completed=None)
+            )
             s.commit()
             return len(cards)
 
