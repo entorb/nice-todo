@@ -14,6 +14,7 @@ COOKIE_NAME = "todo_auth"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
 _LOGIN_ROUTE = "/login"
 _LOGIN_POST_ROUTE = "/login/submit"
+_LOGOUT_ROUTE = "/logout"
 
 # Required env var — app won't start without it.
 API_KEY: str = os.environ.get("NICEGUI_API_KEY", "")
@@ -33,10 +34,12 @@ def _is_valid_token(token: str) -> bool:
 def _is_public(path: str) -> bool:
     """Paths that must be accessible without auth."""
     login_prefix = f"{_SUBPATH}{_LOGIN_ROUTE}"
+    logout_prefix = f"{_SUBPATH}{_LOGOUT_ROUTE}"
     nicegui_prefix = f"{_SUBPATH}/_nicegui/"
     socketio_prefix = f"{_SUBPATH}/socket.io/"
     public_prefixes = (
         login_prefix,
+        logout_prefix,
         nicegui_prefix,
         socketio_prefix,
         "/_nicegui/",
@@ -91,6 +94,20 @@ def _register_login_post(login_url: str, home_url: str) -> None:
         return response
 
 
+def _register_logout(login_url: str) -> None:
+    """Register the logout endpoint that deletes the auth cookie."""
+
+    @app.get(_LOGOUT_ROUTE)
+    async def _logout() -> Response:
+        """Delete the auth cookie and redirect to login."""
+        response = RedirectResponse(login_url, status_code=303)
+        response.delete_cookie(
+            COOKIE_NAME,
+            path="/",
+        )
+        return response
+
+
 def _register_login_page() -> None:
     """Register the NiceGUI login page."""
 
@@ -121,4 +138,5 @@ def setup_auth() -> None:
 
     _register_middleware(login_url)
     _register_login_post(login_url, home_url)
+    _register_logout(login_url)
     _register_login_page()
