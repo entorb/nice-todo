@@ -280,24 +280,6 @@ def delete_cards_dialog(
     return dialog
 
 
-def pick_board_dialog(
-    boards: list[Board],
-    on_select: Callable[[Board], None],
-) -> ui.dialog:
-    """Show a dialog to pick a target board."""
-    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
-        ui.label("Move to Board").classes("text-h6")
-        for b in boards:
-            ui.button(
-                b.name,
-                on_click=lambda _, board=b: (dialog.close(), on_select(board)),
-            ).classes("w-full").props("flat align=left").style("text-transform:none;")
-        ui.separator()
-        ui.button("Cancel", on_click=dialog.close).props("flat").classes("w-full")
-    dialog.open()
-    return dialog
-
-
 def move_copy_dialog(
     action: str,
     boards: list[Board],
