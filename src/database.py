@@ -102,14 +102,6 @@ class Database:
                 s.add(board)
                 s.commit()
 
-    def board_key_exists(self, key: str, exclude_board_id: int | None = None) -> bool:
-        """Check if a board key is already taken."""
-        with self.session() as s:
-            stmt = select(Board).where(Board.key == key)
-            if exclude_board_id is not None:
-                stmt = stmt.where(Board.id != exclude_board_id)
-            return s.exec(stmt).first() is not None
-
     def delete_board(self, board_id: int) -> None:
         """Delete board and all associated data (cascades via relationships)."""
         with self.session() as s:
