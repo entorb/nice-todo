@@ -211,27 +211,27 @@ class BoardService:
         error = self.validate_board_key(key)
         if error:
             return error
-        if self._db.board_key_exists(key):
-            return "Board key already in use"
         self._db.add_board(key, name)
         return None
 
     _KEY_PATTERN = re.compile(r"^[a-zA-Z0-9._~-]+$")
 
-    def validate_board_key(self, key: str) -> str | None:
+    def validate_board_key(self, key: str, exclude_id: int | None = None) -> str | None:
         """Return an error message if the key is invalid, or None if valid."""
         if not key:
             return "Board key must not be empty"
         if not self._KEY_PATTERN.match(key):
             return "Board key contains invalid characters"
+        # Check for uniqueness
+        existing = self._db.get_board_by_key(key)
+        if existing is not None and (exclude_id is None or existing.id != exclude_id):
+            return "Board key must be unique"
         return None
 
     def update_board_key(self, board_id: int, new_key: str) -> str | None:
         """Validate and update the board key."""
-        error = self.validate_board_key(new_key)
+        error = self.validate_board_key(new_key, exclude_id=board_id)
         if error:
             return error
-        if self._db.board_key_exists(new_key, exclude_board_id=board_id):
-            return "Board key already in use"
         self._db.update_board_key(board_id, new_key)
         return None
