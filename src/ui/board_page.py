@@ -540,11 +540,14 @@ class BoardPageController:
             self._bs.rename_board(self._board.id, name)
             ui.navigate.to(f"/?key={new_key}")
 
+        def validate_key(key: str) -> str | None:
+            return self._bs.validate_board_key(key, exclude_id=self._board.id)
+
         dialogs.rename_board_dialog(
             self._board.name,
             self._board.key,
             on_save,
-            self._bs.validate_board_key,
+            validate_key,
         )
 
     def _on_new_board(self) -> None:
