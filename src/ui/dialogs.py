@@ -144,7 +144,9 @@ def rename_board_dialog(
     with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
         ui.label("Rename Board").classes("text-h6")
         name_input = ui.input(label="Board Name", value=current_name).classes("w-full")
-        key_input = ui.input(label="Board Key", value=current_key).classes("w-full")
+        key_input = ui.input(label="Board Key (optional)", value=current_key).classes(
+            "w-full"
+        )
         error_label = ui.label("").classes("text-negative text-caption")
         error_label.set_visibility(False)
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
@@ -174,6 +176,10 @@ def _save_rename_board(  # noqa: PLR0913
         error_label.set_visibility(True)
         return
     new_key = (key_input.value or "").strip()
+    # If key is empty, default to lowercase board name
+    if not new_key:
+        new_key = name.lower()
+        key_input.value = new_key
     error = validate_key(new_key)
     if error:
         error_label.text = error
