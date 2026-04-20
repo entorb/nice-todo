@@ -200,7 +200,7 @@ def export_scope_dialog(
             value=True,
         ).classes("w-full")
         fmt = ui.toggle(
-            {"markdown": "Markdown", "html": "HTML"},
+            {"html": "HTML", "markdown": "Markdown", "txt": "TXT"},
             value="markdown",
         ).classes("w-full")
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
