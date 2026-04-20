@@ -193,11 +193,11 @@ class BoardService:
             self._db.update_card_positions(positions)  # type: ignore[arg-type]
 
     def delete_completed_cards(self, board_id: int) -> int:
-        """Delete all completed non-template cards."""
+        """Delete completed non-template cards, unset date_completed on templates."""
         return self._db.delete_completed_non_template_cards(board_id)
 
     def delete_all_cards(self, board_id: int) -> int:
-        """Delete all non-template cards."""
+        """Delete all non-template cards, unset date_completed on templates."""
         return self._db.delete_all_non_template_cards(board_id)
 
     # Board management
