@@ -1,4 +1,4 @@
-"""Markdown and HTML export service for the Nice TODO."""
+"""Markdown, HTML, and TXT export service for the Nice TODO."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class ExportService:
-    """Generate Markdown or HTML exports from board data."""
+    """Generate Markdown, HTML, or TXT exports from board data."""
 
     def export(
         self,
@@ -25,6 +25,8 @@ class ExportService:
         """Export cards in the chosen format."""
         if fmt == "html":
             return self._export_html(board, labels, completed_only=completed_only)
+        if fmt == "txt":
+            return self._export_txt(board, labels, completed_only=completed_only)
         return self._export_markdown(board, labels, completed_only=completed_only)
 
     def _export_markdown(
@@ -88,6 +90,36 @@ class ExportService:
             parts.append("</ul>")
         return "\n".join(parts) + "\n"
 
+    def _export_txt(
+        self,
+        board: Board,
+        labels: list[Label],
+        *,
+        completed_only: bool = False,
+    ) -> str:
+        """Export cards as plain text."""
+        label_map: dict[int | None, str] = {
+            lb.id: lb.name for lb in labels if lb.id is not None
+        }
+        key_fn = card_sort_key(label_map)
+        lines = []
+        for col in board.columns:
+            cards = (
+                [c for c in col.cards if c.is_completed]
+                if completed_only
+                else list(col.cards)
+            )
+            if not cards:
+                continue
+            cards.sort(key=key_fn)
+            lines.append(f"{col.name}:")
+            lines.extend(
+                self._format_card_txt(card, label_map, completed_only=completed_only)
+                for card in cards
+            )
+            lines.append("")
+        return "\n".join(lines).rstrip("\n") + "\n"
+
     @staticmethod
     def _format_card_md(
         card: Card,
@@ -108,6 +140,29 @@ class ExportService:
         else:
             check = "x" if card.is_completed else " "
             prefix = f"- [{check}] "
+
+        return f"{prefix}{card.title}{suffix}"
+
+    @staticmethod
+    def _format_card_txt(
+        card: Card,
+        label_map: dict[int | None, str],
+        *,
+        completed_only: bool,
+    ) -> str:
+        """Format a single card as a plain text line."""
+        suffix = ""
+        if card.label_id and card.label_id in label_map:
+            suffix = f" ({label_map[card.label_id]})"
+
+        if card.prio is True:
+            suffix += " *"
+
+        if completed_only:
+            prefix = ""
+        else:
+            check = "x" if card.is_completed else " "
+            prefix = f"[{check}] "
 
         return f"{prefix}{card.title}{suffix}"
 
