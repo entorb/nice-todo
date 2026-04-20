@@ -189,6 +189,8 @@ class BoardPageController:
         ui.menu_item("Sort Cards", on_click=self._on_sort_cards)
         ui.menu_item("Export", on_click=self._on_export)
         ui.menu_item("Delete Cards", on_click=self._on_delete_cards)
+        ui.separator()
+        ui.menu_item("Logout", on_click=lambda: ui.navigate.to("/logout"))
 
     def _render_bulk_bar(self) -> None:
         if not self._bulk_active:
