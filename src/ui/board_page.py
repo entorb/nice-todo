@@ -173,15 +173,6 @@ class BoardPageController:
         ui.separator()
         ui.menu_item("Bulk Edit Mode", on_click=self._on_toggle_bulk)
         ui.menu_item("Rename Board", on_click=self._on_rename_board)
-        others = [b for b in self._bs.get_all_boards() if b.id != self._board.id]
-        if others:
-            ui.menu_item(
-                "Switch Board",
-                on_click=lambda: dialogs.pick_board_dialog(
-                    others,
-                    lambda b: ui.navigate.to(f"/?key={b.key}"),
-                ),
-            )
         ui.menu_item("New Board", on_click=self._on_new_board)
         ui.separator()
         ui.menu_item("Manage Labels", on_click=self._on_manage_labels)
