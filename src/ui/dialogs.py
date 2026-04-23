@@ -80,7 +80,7 @@ def _save_label(
     dialog.close()
 
 
-def export_dialog(content: str, fmt: str = "markdown") -> ui.dialog:
+def export_dialog(content: str, fmt: str = "txt") -> ui.dialog:
     """Show export result: rendered HTML or markdown in a textarea."""
     with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[400px]"):
         ui.label("Export").classes("text-h6")
@@ -200,8 +200,8 @@ def export_scope_dialog(
             value=True,
         ).classes("w-full")
         fmt = ui.toggle(
-            {"html": "HTML", "markdown": "Markdown", "txt": "TXT"},
-            value="markdown",
+            {"txt": "Plain", "markdown": "Markdown", "html": "HTML"},
+            value="txt",
         ).classes("w-full")
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
