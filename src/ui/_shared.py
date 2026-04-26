@@ -1,7 +1,7 @@
 """Shared constants and helpers for UI components."""
 
 # Events
-_EVENT_KEYDOWN_ENTER = "keydown.enter"
+_EVENT_KEYDOWN_ENTER = "keydown.enter.prevent"
 
 # Icon button styling
 _ICON_BTN_OPACITY = "opacity:0.6;"

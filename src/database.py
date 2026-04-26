@@ -4,6 +4,7 @@ SQLModel-based database layer for the Nice TODO.
 all text inputs are stripped of white spaces prior to insert/update
 """
 
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,13 @@ from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from src.models import Board, Card, Column, Label
+
+
+def _clean_title(title: str) -> str:
+    """Normalize title by stripping whitespace and collapsing multiple spaces."""
+    title = re.sub(r"\s+", " ", title)
+    title = title.strip()
+    return title
 
 
 class Database:
@@ -171,7 +179,8 @@ class Database:
     def create_card(self, column_id: int, title: str, position: int) -> Card:
         """Create a new card."""
         with self.session() as s:
-            card = Card(column_id=column_id, title=title.strip(), position=position)
+            title = _clean_title(title)
+            card = Card(column_id=column_id, title=title, position=position)
             s.add(card)
             s.commit()
             s.refresh(card)
@@ -181,7 +190,7 @@ class Database:
         """Update a card's title."""
         with self.session() as s:
             if card := s.get(Card, card_id):
-                card.title = title.strip()
+                card.title = _clean_title(title)
                 s.add(card)
                 s.commit()
 
