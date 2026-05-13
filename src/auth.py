@@ -76,10 +76,7 @@ def _register_login_post(login_url: str, home_url: str) -> None:
     @app.post(_LOGIN_POST_ROUTE)
     async def _login_submit(key: str = Form()) -> Response:
         """Validate the key and set an auth cookie."""
-        if not hmac.compare_digest(
-            hashlib.sha256(key.encode()).hexdigest(),
-            _make_token(API_KEY),
-        ):
+        if not hmac.compare_digest(key, API_KEY):
             return RedirectResponse(f"{login_url}?error=1", status_code=303)
         response = RedirectResponse(home_url, status_code=303)
         response.set_cookie(
