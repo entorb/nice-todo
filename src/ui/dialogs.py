@@ -80,60 +80,6 @@ def _save_label(
     dialog.close()
 
 
-def export_dialog(content: str, fmt: str = "txt") -> ui.dialog:
-    """Show export result: rendered HTML or markdown in a textarea."""
-    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[400px]"):
-        ui.label("Export").classes("text-h6")
-        if fmt == "html":
-            ui.html(content).classes("w-full").style(
-                "max-height:60vh;overflow:auto;padding:8px;"
-            )
-        else:
-            textarea = (
-                ui.textarea(
-                    value=content,
-                )
-                .classes("w-full font-mono")
-                .props("readonly autogrow")
-            )
-        with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
-            if fmt == "html":
-                ui.button(
-                    "Copy to clipboard",
-                    icon="content_copy",
-                    on_click=lambda: _copy_html_to_clipboard(content),
-                ).props(_BTN_PRIMARY_PROPS)
-            else:
-                ui.button(
-                    "Copy to clipboard",
-                    icon="content_copy",
-                    on_click=lambda: _copy_to_clipboard(textarea.value or ""),
-                ).props(_BTN_PRIMARY_PROPS)
-            ui.button("Close", on_click=dialog.close).props("flat")
-    dialog.open()
-    return dialog
-
-
-async def _copy_to_clipboard(text: str) -> None:
-    """Copy text to clipboard via browser JS."""
-    escaped = text.replace("\\", "\\\\").replace("`", "\\`")
-    await ui.run_javascript(f"navigator.clipboard.writeText(`{escaped}`)")
-    ui.notify("Copied to clipboard", type="positive")
-
-
-async def _copy_html_to_clipboard(html: str) -> None:
-    """Copy HTML as rich text so pasting gives formatted content."""
-    escaped = html.replace("\\", "\\\\").replace("`", "\\`")
-    js = (
-        "const html = `" + escaped + "`;"
-        "const blob = new Blob([html], {type: 'text/html'});"
-        "const item = new ClipboardItem({'text/html': blob});"
-        "navigator.clipboard.write([item]);"
-    )
-    await ui.run_javascript(js)
-    ui.notify("Copied to clipboard", type="positive")
-
-
 def rename_board_dialog(
     current_name: str,
     current_key: str,
@@ -190,10 +136,10 @@ def _save_rename_board(  # noqa: PLR0913
 
 
 def export_scope_dialog(
-    on_export: Callable[[bool, str], None],
+    on_export: Callable[[bool, str], str | None],
 ) -> ui.dialog:
-    """Show a dialog to choose export scope and format."""
-    with ui.dialog() as dialog, ui.card().classes(_DIALOG_CARD_CLASSES):
+    """Show dialog to choose export scope/format, copy result to clipboard and close."""
+    with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[400px]"):
         ui.label("Export").classes("text-h6")
         scope = ui.toggle(
             {True: "Completed Only", False: "All Cards"},
@@ -203,14 +149,39 @@ def export_scope_dialog(
             {"txt": "Plain", "markdown": "Markdown", "html": "HTML"},
             value="txt",
         ).classes("w-full")
+
+        async def _on_export_clicked() -> None:
+            content = on_export(scope.value, fmt.value)
+            if content:
+                await _copy_export_result(content, fmt.value)
+            dialog.close()
+
         with ui.row().classes(_DIALOG_ACTIONS_CLASSES):
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Export",
-                on_click=lambda: (dialog.close(), on_export(scope.value, fmt.value)),
+                on_click=_on_export_clicked,
             ).props(_BTN_PRIMARY_PROPS)
     dialog.open()
     return dialog
+
+
+async def _copy_export_result(content: str, fmt: str) -> None:
+    """Copy export result to clipboard based on format."""
+    escaped = content.replace("\\", "\\\\").replace("`", "\\`")
+    if fmt == "html":
+        js = (
+            "(async () => {"
+            "const html = `" + escaped + "`;"
+            "const blob = new Blob([html], {type: 'text/html'});"
+            "const item = new ClipboardItem({'text/html': blob});"
+            "await navigator.clipboard.write([item]);"
+            "})()"
+        )
+    else:
+        js = f"navigator.clipboard.writeText(`{escaped}`)"
+    await ui.run_javascript(js)
+    ui.notify("Copied to clipboard", type="positive")
 
 
 def delete_cards_dialog(
