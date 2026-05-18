@@ -432,16 +432,16 @@ class BoardPageController:
         self._refresh()
 
     def _on_export(self) -> None:
-        def on_export(completed_only: bool, fmt: str) -> None:  # noqa: FBT001
+        def on_export(completed_only: bool, fmt: str) -> str | None:  # noqa: FBT001
             fresh = self._bs.load_board(self._key)
             if fresh:
-                content = self._es.export(
+                return self._es.export(
                     fresh,
                     self._labels,
                     completed_only=completed_only,
                     fmt=fmt,
                 )
-                dialogs.export_dialog(content, fmt=fmt)
+            return None
 
         dialogs.export_scope_dialog(on_export)
 
