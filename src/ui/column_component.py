@@ -186,5 +186,6 @@ class ColumnComponent(ui.column):
         if not title:
             return
         if self._on_add_card and column_id is not None:
+            # runs _clean_title before insert/update to DB
             self._on_add_card(column_id, title)
         inp.value = ""
