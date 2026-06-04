@@ -25,19 +25,22 @@ def card_sort_key(
     def key(c: Card) -> tuple[bool, int, bool, str, str]:
         if c.is_completed:
             return (
-                True,
-                _prio_rank(c),
-                False,
-                c.date_completed.isoformat() if c.date_completed else "",
-                "",
+                True,  # 1 completed
+                _prio_rank(c),  # 2 prio
+                False,  # 3 has label
+                c.date_completed.isoformat()
+                if c.date_completed
+                else "",  # 4 date completed
+                "",  # 5 none
             )
         label_name = label_map.get(c.label_id, "") if c.label_id else ""  # type: ignore[arg-type]
         return (
-            False,
-            _prio_rank(c),
-            not bool(label_name),  # False (has label) sorts before True (no label)
-            label_name,
-            c.date_created.isoformat(),
+            False,  # 1 completed
+            _prio_rank(c),  # 2 prio
+            not bool(label_name),  # 3 label: has label before no label
+            label_name.lower(),  # 4 label name
+            c.title.lower(),  # 5 card title
+            # c.date_created.isoformat(),  # 5 date
         )
 
     return key
