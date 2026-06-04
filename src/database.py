@@ -16,7 +16,11 @@ from src.models import Board, Card, Column, Label
 
 def _clean_title(title: str) -> str:
     """Normalize title by stripping whitespace and collapsing multiple spaces."""
-    title = re.sub(r"\s+", " ", title)
+    # CRLF to LF
+    title = title.replace("\r\n", "\n")
+    # drop multiple spaces, but keep line breaks
+    title = re.sub(r"[ \t]+", " ", title)
+    # strip
     title = title.strip()
     return title
 
