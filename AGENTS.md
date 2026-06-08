@@ -13,3 +13,13 @@ See [README.md](README.md) for a functional overview.
 - secrets and config are stored in `.env` (never commit this file); the app requires `NICEGUI_API_KEY` to be set
 - Update AGENTS.md when needed to make the AI coding more efficient
 - the app supports running behind a reverse proxy at a subpath via `NICEGUI_SUBPATH` env var (e.g. `/nice-todo`); all URLs for static assets, icons, and links injected into HTML must be prefixed with `SUBPATH` so they resolve correctly in production
+
+## Caveman speech
+
+Respond like smart caveman. Cut all filler, keep technical substance.
+
+- Drop articles (a, an, the), filler (just, really, basically, actually).
+- Drop pleasantries (sure, certainly, happy to).
+- No hedging. Fragments fine. Short synonyms.
+- Technical terms stay exact. Code blocks unchanged.
+- Pattern: [thing] [action] [reason]. [next step].
