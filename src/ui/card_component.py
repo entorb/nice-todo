@@ -56,6 +56,8 @@ class CardComponent(ui.card):
         """Initialize card component."""
         super().__init__()
         self.card_data = card
+        self._label = label
+        self._checkbox: ui.checkbox | None = None
         self._on_toggle_completed = on_toggle_completed
         self._on_toggle_template = on_toggle_template
         self._on_toggle_prio = on_toggle_prio
@@ -106,6 +108,17 @@ class CardComponent(ui.card):
 
         return style
 
+    def _apply_completed_instantly(self, *, is_completed: bool) -> None:
+        """Update card appearance instantly for optimistic UI."""
+        self.card_data.is_completed = is_completed
+        # Update checkbox opacity
+        if self._checkbox:
+            opacity = "" if is_completed else _ICON_BTN_OPACITY
+            self._checkbox.style(opacity)
+        # Update card style
+        new_style = self._compute_style(self.card_data, self._label)
+        self.style(new_style)
+
     def _build_drag_handle(self) -> None:
         """Build the drag-handle icon."""
         handle = (
@@ -140,16 +153,26 @@ class CardComponent(ui.card):
             )
 
         check_opacity = "" if card.is_completed else _ICON_BTN_OPACITY
-        ui.checkbox(
-            value=card.is_completed,
-            on_change=lambda e, cid=card.id: (
-                self._on_toggle_completed(cid, e.value)  # type: ignore[misc]
-                if self._on_toggle_completed
-                else None
-            ),
-        ).classes("min-w-[24px] min-h-[24px]").props("dense color=green").style(
-            check_opacity
-        ).tooltip("Toggle completed")
+
+        def _on_check_change(e: object, cid: int | None = card.id) -> None:
+            """Optimistic update: apply UI changes instantly, save async."""
+            new_state = e.value  # type: ignore[union-attr]
+            # Apply UI changes immediately
+            self._apply_completed_instantly(is_completed=new_state)
+            # Notify parent (async save only, no full refresh)
+            if self._on_toggle_completed:
+                self._on_toggle_completed(cid, new_state)  # type: ignore[arg-type]
+
+        self._checkbox = (
+            ui.checkbox(
+                value=card.is_completed,
+                on_change=_on_check_change,
+            )
+            .classes("min-w-[24px] min-h-[24px]")
+            .props("dense color=green")
+            .style(check_opacity)
+            .tooltip("Toggle completed")
+        )
 
     def _build_title(self, card: Card) -> None:
         """Build the editable title input."""
@@ -261,6 +284,33 @@ class CardComponent(ui.card):
             ):
                 ui.icon(tpl_icon).classes("text-lg")
                 ui.label(tpl_label)
+
+            # Set Label (inline in context menu)
+            if available_labels and self._on_set_label:
+                ui.separator()
+                for lbl in available_labels:
+                    with (
+                        ui.menu_item(
+                            on_click=lambda _, lid=lbl.id, cid=card.id: (
+                                self._on_set_label(cid, lid),  # type: ignore[misc]
+                                ctx_menu.close(),
+                            ),
+                        ),
+                        ui.row().classes("items-center no-wrap gap-2"),
+                    ):
+                        ui.icon("label").classes("text-lg").style(f"color:{lbl.color};")
+                        ui.label(f"Label: {lbl.name}")
+                with (
+                    ui.menu_item(
+                        on_click=lambda _, cid=card.id: (
+                            self._on_set_label(cid, None),  # type: ignore[misc]
+                            ctx_menu.close(),
+                        ),
+                    ),
+                    ui.row().classes("items-center no-wrap gap-2"),
+                ):
+                    ui.icon("label_off").classes("text-lg")
+                    ui.label("Remove Label")
 
             ui.separator()
 

@@ -316,8 +316,8 @@ class BoardPageController:
         self._refresh()
 
     def _on_toggle_completed(self, card_id: int, is_completed: bool) -> None:  # noqa: FBT001
+        """Save card completion (UI already updated optimistically)."""
         self._bs.toggle_card_completed(card_id, is_completed=is_completed)
-        self._refresh()
 
     def _on_toggle_template(self, card_id: int, is_template: bool) -> None:  # noqa: FBT001
         self._bs.toggle_card_template(card_id, is_template=is_template)
