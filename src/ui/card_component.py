@@ -235,8 +235,15 @@ class CardComponent(ui.card):
         available_labels: list[Label] | None,
     ) -> None:
         """Build label picker and a three-dot context menu for card actions."""
+        label_dialog: ui.dialog | None = None
         if available_labels and self._on_set_label:
-            self._build_label_picker(card, available_labels)
+            label_dialog = self._build_label_dialog(card, available_labels)
+            (
+                ui.button(icon="label", on_click=lambda _: label_dialog.open())
+                .props(_ICON_BTN_PROPS)
+                .style(_ICON_BTN_OPACITY)
+                .tooltip("Set label")
+            )
 
         with (
             ui.button(icon="more_vert").props(_ICON_BTN_PROPS).style(_ICON_BTN_OPACITY),
@@ -285,32 +292,20 @@ class CardComponent(ui.card):
                 ui.icon(tpl_icon).classes("text-lg")
                 ui.label(tpl_label)
 
-            # Set Label (inline in context menu)
-            if available_labels and self._on_set_label:
+            # Set label (opens dialog)
+            if label_dialog:
                 ui.separator()
-                for lbl in available_labels:
-                    with (
-                        ui.menu_item(
-                            on_click=lambda _, lid=lbl.id, cid=card.id: (
-                                self._on_set_label(cid, lid),  # type: ignore[misc]
-                                ctx_menu.close(),
-                            ),
-                        ),
-                        ui.row().classes("items-center no-wrap gap-2"),
-                    ):
-                        ui.icon("label").classes("text-lg").style(f"color:{lbl.color};")
-                        ui.label(f"Label: {lbl.name}")
                 with (
                     ui.menu_item(
-                        on_click=lambda _, cid=card.id: (
-                            self._on_set_label(cid, None),  # type: ignore[misc]
+                        on_click=lambda _: (
                             ctx_menu.close(),
+                            label_dialog.open(),
                         ),
                     ),
                     ui.row().classes("items-center no-wrap gap-2"),
                 ):
-                    ui.icon("label_off").classes("text-lg")
-                    ui.label("Remove Label")
+                    ui.icon("label").classes("text-lg")
+                    ui.label("Set label\u2026")
 
             ui.separator()
 
@@ -354,31 +349,29 @@ class CardComponent(ui.card):
                 ui.icon("delete").classes("text-lg text-negative")
                 ui.label("Delete").classes("text-negative")
 
-    def _build_label_picker(self, card: Card, available_labels: list[Label]) -> None:
-        """Build the label picker menu."""
-        with (
-            ui.button(icon="label")
-            .props(_ICON_BTN_PROPS)
-            .style(_ICON_BTN_OPACITY)
-            .tooltip("Set label"),
-            ui.menu() as label_menu,
-        ):
+    def _build_label_dialog(
+        self, card: Card, available_labels: list[Label]
+    ) -> ui.dialog:
+        """Build the label select dialog."""
+        dialog = ui.dialog()
+        with dialog, ui.card().classes("items-stretch gap-1 p-4"):
             for lbl in available_labels:
-                ui.menu_item(
+                ui.button(
                     lbl.name,
                     on_click=lambda _, lid=lbl.id, cid=card.id: (
                         self._on_set_label(cid, lid),  # type: ignore[misc]
-                        label_menu.close(),
+                        dialog.close(),
                     ),
                 ).style(f"border-left:4px solid {lbl.color};padding-left:8px;")
             ui.separator()
-            ui.menu_item(
+            ui.button(
                 "Remove label",
                 on_click=lambda _, cid=card.id: (
                     self._on_set_label(cid, None),  # type: ignore[misc]
-                    label_menu.close(),
+                    dialog.close(),
                 ),
             )
+        return dialog
 
     def _handle_dragstart(self) -> None:
         global dragged  # noqa: PLW0603
