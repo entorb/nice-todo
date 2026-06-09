@@ -186,7 +186,7 @@ async def _copy_export_result(content: str, fmt: str) -> None:
 
 def delete_cards_dialog(
     get_board: Callable[[], Board],
-    on_pin: Callable[[int], None],
+    on_repeat: Callable[[int], None],
     on_delete: Callable[[bool], None],
 ) -> ui.dialog:
     """Show a two-step dialog: pick scope, then confirm with card list."""
@@ -196,7 +196,7 @@ def delete_cards_dialog(
             {True: "Completed Only", False: "All Cards"},
             value=True,
         ).classes("w-full")
-        ui.label("Pinned cards will not be deleted.").classes(_STYLE_NOTE)
+        ui.label("Repeat cards will not be deleted.").classes(_STYLE_NOTE)
         preview = ui.column().classes("w-full gap-1 mt-2")
 
         def _render_preview() -> None:
@@ -209,7 +209,7 @@ def delete_cards_dialog(
                     victims = [
                         c
                         for c in col.cards
-                        if not c.is_template and (not completed_only or c.is_completed)
+                        if not c.is_repeat and (not completed_only or c.is_completed)
                     ]
                     if not victims:
                         continue
@@ -227,13 +227,13 @@ def delete_cards_dialog(
                                 "overflow:hidden;text-overflow:ellipsis;"
                             )
                             ui.button(
-                                icon="push_pin",
+                                icon="repeat",
                                 on_click=lambda _, cid=card.id: (
-                                    on_pin(cid),
+                                    on_repeat(cid),
                                     _render_preview(),
                                 ),
                             ).props("flat dense round size=xs").tooltip(
-                                "Pin as template (exclude)"
+                                "Mark as repeat (exclude)"
                             )
                 if total == 0:
                     ui.label("No cards to delete.").classes(_STYLE_NOTE)

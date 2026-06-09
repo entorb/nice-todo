@@ -16,8 +16,8 @@ from src.ui._shared import (
     _OPACITY_COMPLETED_LABELED,
     _OPACITY_COMPLETED_PLAIN,
     PRIO_ICON_SET,
-    TEMPLATE_ICON_SET,
-    TEMPLATE_ICON_UNSET,
+    REPEAT_ICON_SET,
+    REPEAT_ICON_UNSET,
     _contrast_color,
     next_prio,
     prio_action_icon,
@@ -43,7 +43,7 @@ class CardComponent(ui.card):
         label: Label | None = None,
         *,
         on_toggle_completed: Callable[[int, bool], None] | None = None,
-        on_toggle_template: Callable[[int, bool], None] | None = None,
+        on_toggle_repeat: Callable[[int, bool], None] | None = None,
         on_toggle_prio: Callable[[int, bool | None], None] | None = None,
         on_edit_title: Callable[[int, str], None] | None = None,
         on_delete: Callable[[int], None] | None = None,
@@ -59,7 +59,7 @@ class CardComponent(ui.card):
         self._label = label
         self._checkbox: ui.checkbox | None = None
         self._on_toggle_completed = on_toggle_completed
-        self._on_toggle_template = on_toggle_template
+        self._on_toggle_repeat = on_toggle_repeat
         self._on_toggle_prio = on_toggle_prio
         self._on_edit_title = on_edit_title
         self._on_delete = on_delete
@@ -202,7 +202,7 @@ class CardComponent(ui.card):
         title_input.on("blur", on_commit)
 
     def _build_indicator_icons(self, card: Card) -> None:
-        """Build clickable indicator icons for template and prio flags."""
+        """Build clickable indicator icons for repeat and prio flags."""
         _unset: bool | None = False
 
         if card.prio is True:
@@ -217,17 +217,17 @@ class CardComponent(ui.card):
                 "Important (click to unset)"
             )
 
-        if card.is_template:
+        if card.is_repeat:
             ui.button(
-                icon=TEMPLATE_ICON_SET,
+                icon=REPEAT_ICON_SET,
                 on_click=lambda _, cid=card.id: (
-                    self._on_toggle_template(  # type: ignore[misc]
-                        cid, not card.is_template
+                    self._on_toggle_repeat(  # type: ignore[misc]
+                        cid, not card.is_repeat
                     )
-                    if self._on_toggle_template
+                    if self._on_toggle_repeat
                     else None
                 ),
-            ).props(_ICON_BTN_PROPS).tooltip("Template (click to unset)")
+            ).props(_ICON_BTN_PROPS).tooltip("Repeat (click to unset)")
 
     def _build_action_buttons(
         self,
@@ -269,21 +269,21 @@ class CardComponent(ui.card):
                 ui.icon(imp_icon).classes("text-lg")
                 ui.label(imp_label)
 
-            # Template toggle
-            tpl_icon = TEMPLATE_ICON_SET
-            if card.is_template:
-                tpl_label = "Unset Template"
-                tpl_icon = TEMPLATE_ICON_UNSET
+            # Repeat toggle
+            tpl_icon = REPEAT_ICON_SET
+            if card.is_repeat:
+                tpl_label = "Unset Repeat"
+                tpl_icon = REPEAT_ICON_UNSET
             else:
-                tpl_label = "Set Template"
+                tpl_label = "Set Repeat"
             with (
                 ui.menu_item(
-                    on_click=lambda _, cid=card.id, cur=card.is_template: (
+                    on_click=lambda _, cid=card.id, cur=card.is_repeat: (
                         (
-                            self._on_toggle_template(cid, not cur),  # type: ignore[misc]
+                            self._on_toggle_repeat(cid, not cur),  # type: ignore[misc]
                             ctx_menu.close(),
                         )
-                        if self._on_toggle_template
+                        if self._on_toggle_repeat
                         else None
                     ),
                 ),
