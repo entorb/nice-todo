@@ -206,11 +206,11 @@ class Database:
                 s.add(card)
                 s.commit()
 
-    def update_card_template(self, card_id: int, *, is_template: bool) -> None:
-        """Toggle a card's template flag."""
+    def update_card_repeat(self, card_id: int, *, is_repeat: bool) -> None:
+        """Toggle a card's repeat flag."""
         with self.session() as s:
             if card := s.get(Card, card_id):
-                card.is_template = is_template
+                card.is_repeat = is_repeat
                 s.add(card)
                 s.commit()
 
@@ -255,8 +255,8 @@ class Database:
                 s.delete(card)
                 s.commit()
 
-    def delete_completed_non_template_cards(self, board_id: int) -> int:
-        """Delete completed non-template cards and unset date_completed on templates."""
+    def delete_completed_non_repeat_cards(self, board_id: int) -> int:
+        """Delete completed non-repeat cards and unset date_completed on repeats."""
         with self.session() as s:
             col_ids = [
                 c.id
@@ -268,22 +268,22 @@ class Database:
                 select(Card)
                 .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
                 .where(Card.date_completed.is_not(None))  # type: ignore[union-attr]
-                .where(Card.is_template == False)  # noqa: E712
+                .where(Card.is_repeat == False)  # noqa: E712
             ).all()
             for card in cards:
                 s.delete(card)
-            # Unset date_completed for all template cards on the board
+            # Unset date_completed for all repeat cards on the board
             s.exec(
                 update(Card)
                 .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.is_template == True)  # noqa: E712
+                .where(Card.is_repeat == True)  # noqa: E712
                 .values(date_completed=None)
             )
             s.commit()
             return len(cards)
 
-    def delete_all_non_template_cards(self, board_id: int) -> int:
-        """Delete all non-template cards and unset date_completed on templates."""
+    def delete_all_non_repeat_cards(self, board_id: int) -> int:
+        """Delete all non-repeat cards and unset date_completed on repeats."""
         with self.session() as s:
             col_ids = [
                 c.id
@@ -294,15 +294,15 @@ class Database:
             cards = s.exec(
                 select(Card)
                 .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.is_template == False)  # noqa: E712
+                .where(Card.is_repeat == False)  # noqa: E712
             ).all()
             for card in cards:
                 s.delete(card)
-            # Unset date_completed for all template cards on the board
+            # Unset date_completed for all repeat cards on the board
             s.exec(
                 update(Card)
                 .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.is_template == True)  # noqa: E712
+                .where(Card.is_repeat == True)  # noqa: E712
                 .values(date_completed=None)
             )
             s.commit()
@@ -317,12 +317,12 @@ class Database:
                     s.add(card)
             s.commit()
 
-    def bulk_set_template(self, card_ids: list[int], *, is_template: bool) -> None:
-        """Set template flag on multiple cards at once."""
+    def bulk_set_repeat(self, card_ids: list[int], *, is_repeat: bool) -> None:
+        """Set repeat flag on multiple cards at once."""
         with self.session() as s:
             for card_id in card_ids:
                 if card := s.get(Card, card_id):
-                    card.is_template = is_template
+                    card.is_repeat = is_repeat
                     s.add(card)
             s.commit()
 
