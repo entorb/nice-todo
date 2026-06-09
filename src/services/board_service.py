@@ -196,6 +196,10 @@ class BoardService:
         """Delete completed non-repeat cards, unset date_completed on repeats."""
         return self._db.delete_completed_non_repeat_cards(board_id)
 
+    def delete_completed_cards_older_than(self, board_id: int, days: int) -> int:
+        """Delete completed non-repeat cards completed > `days` ago."""
+        return self._db.delete_completed_non_repeat_cards_older_than(board_id, days)
+
     def delete_all_cards(self, board_id: int) -> int:
         """Delete all non-repeat cards, unset date_completed on repeats."""
         return self._db.delete_all_non_repeat_cards(board_id)
