@@ -451,11 +451,13 @@ class BoardPageController:
             # Reload board data so the preview reflects the change
             self._reload_data()
 
-        def on_delete(completed_only: bool) -> None:  # noqa: FBT001
-            if completed_only:
-                self._bs.delete_completed_cards(self._board.id)
-            else:
+        def on_delete(mode: str) -> None:
+            if mode == "all":
                 self._bs.delete_all_cards(self._board.id)
+            elif mode == "2w":
+                self._bs.delete_completed_cards_older_than(self._board.id, days=14)
+            else:
+                self._bs.delete_completed_cards(self._board.id)
             self._refresh()
 
         dialogs.delete_cards_dialog(lambda: self._board, on_repeat, on_delete)
