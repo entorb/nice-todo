@@ -40,10 +40,10 @@ PRIO_ICON_SET = "flag"
 PRIO_ICON_UNSET = "outlined_flag"
 PRIO_ICON_CLEAR = "flag_circle"
 
-# -- Template icons --
+# -- Repeat icons --
 
-TEMPLATE_ICON_SET = "push_pin"
-TEMPLATE_ICON_UNSET = "remove_circle_outline"
+REPEAT_ICON_SET = "repeat"
+REPEAT_ICON_UNSET = "remove_circle_outline"
 
 # -- Label icons --
 

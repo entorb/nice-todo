@@ -61,7 +61,7 @@ Browser (UI) ←WebSocket→ NiceGUI UI Layer → Service Layer → Repository L
 - Title: string
 - Position: int (0-based, sequential within column)
 - is_completed: bool (default false)
-- is_template: bool (default false)
+- is_repeat: bool (default false)
 - label_id: int | null, foreign key → Label.ID, SET NULL on delete
 
 ### Label
@@ -74,7 +74,7 @@ Browser (UI) ←WebSocket→ NiceGUI UI Layer → Service Layer → Repository L
 ### SQLite Schema Notes
 
 - Table `column_` (underscore suffix because `column` is a SQL reserved word)
-- `is_completed` / `is_template` stored as INTEGER (0/1) in SQLite
+- `is_completed` / `is_repeat` stored as INTEGER (0/1) in SQLite
 - Foreign keys enforced via `PRAGMA foreign_keys = ON`
 
 ## Features V1 (implemented)
@@ -88,8 +88,8 @@ All board-level actions are in a dropdown menu (three-dot icon next to board nam
 - Bulk Label Mode (select multiple cards via checkboxes, assign label to all at once)
 - Export All (Markdown: board name as h1, columns as h2, card titles as bullets, empty columns omitted)
 - Export Completed (same structure, only completed cards, columns without completed cards omitted)
-- Delete Completed Cards (removes cards where is_completed=true AND is_template=false)
-- Delete All Cards (removes cards where is_template=false, templates survive)
+- Delete Completed Cards (removes cards where is_completed=true AND is_repeat=false)
+- Delete All Cards (removes cards where is_repeat=false, others survive)
 - Rename Board
 - Edit Board Key (with validation: non-empty, URL-safe chars, unique across boards)
 - Delete Board: admin-only via CLI script `python -m src.delete_board <id_or_key>`, not exposed in UI
@@ -118,7 +118,7 @@ All board-level actions are in a dropdown menu (three-dot icon next to board nam
 - Completed cards with a label: same color but reduced opacity (0.45)
 - Completed cards without a label: light grey background, reduced opacity (0.6)
 - Completed card titles: strikethrough + grey text
-- Template cards: dashed border + template icon
+- Repeat cards: dashed border + repeat icon
 - Cards have rounded corners (6px), smooth transitions
 
 ### Label Features
@@ -180,8 +180,8 @@ All board-level actions are in a dropdown menu (three-dot icon next to board nam
 
 - Multiple boards with create-new-board UI
 - Persist in MySQL DB (swap repository implementation, service/UI unchanged)
-- Card: modify isTemplate flag via UI
-  - At board cleanup: template cards are not deleted, but instead is_completed → false
+- Card: modify is_repeat flag via UI
+  - At board cleanup:repeat cards are not deleted, but instead is_completed → false
 - Real-time sync between concurrent users (WebSocket push)
 
 ## Tech Stack

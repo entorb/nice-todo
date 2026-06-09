@@ -12,7 +12,7 @@ from src.ui._shared import (
     PRIO_ICON_CLEAR,
     PRIO_ICON_SET,
     PRIO_ICON_UNSET,
-    TEMPLATE_ICON_SET,
+    REPEAT_ICON_SET,
 )
 from src.ui.column_component import ColumnComponent
 
@@ -214,15 +214,15 @@ class BoardPageController:
 
             ui.separator().props("vertical")
 
-            # Template
+            # Repeat
             ui.button(
-                icon=TEMPLATE_ICON_SET,
-                on_click=lambda: self._on_bulk_template(is_template=True),
-            ).props(_btn).style(_btn_style).tooltip("Set template")
+                icon=REPEAT_ICON_SET,
+                on_click=lambda: self._on_bulk_repeat(is_repeat=True),
+            ).props(_btn).style(_btn_style).tooltip("Set repeat")
             ui.button(
-                icon=TEMPLATE_ICON_SET,
-                on_click=lambda: self._on_bulk_template(is_template=False),
-            ).props(_unset_btn).style(_unset_style).tooltip("Unset template")
+                icon=REPEAT_ICON_SET,
+                on_click=lambda: self._on_bulk_repeat(is_repeat=False),
+            ).props(_unset_btn).style(_unset_style).tooltip("Unset repeat")
 
             ui.separator().props("vertical")
 
@@ -250,7 +250,7 @@ class BoardPageController:
     def _render_columns(self) -> None:
         cbs = {
             "on_toggle_completed": self._on_toggle_completed,
-            "on_toggle_template": self._on_toggle_template,
+            "on_toggle_repeat": self._on_toggle_repeat,
             "on_toggle_prio": self._on_toggle_prio,
             "on_edit_title": self._on_edit_title,
             "on_delete": self._on_delete_card,
@@ -319,8 +319,8 @@ class BoardPageController:
         """Save card completion (UI already updated optimistically)."""
         self._bs.toggle_card_completed(card_id, is_completed=is_completed)
 
-    def _on_toggle_template(self, card_id: int, is_template: bool) -> None:  # noqa: FBT001
-        self._bs.toggle_card_template(card_id, is_template=is_template)
+    def _on_toggle_repeat(self, card_id: int, is_repeat: bool) -> None:  # noqa: FBT001
+        self._bs.toggle_card_repeat(card_id, is_repeat=is_repeat)
         self._refresh()
 
     def _on_toggle_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
@@ -405,11 +405,11 @@ class BoardPageController:
             self._bulk_active = False
             self._refresh()
 
-    def _on_bulk_template(self, *, is_template: bool) -> None:
+    def _on_bulk_repeat(self, *, is_repeat: bool) -> None:
         if self._bulk_selected:
-            self._bs.bulk_set_template(
+            self._bs.bulk_set_repeat(
                 list(self._bulk_selected),
-                is_template=is_template,
+                is_repeat=is_repeat,
             )
             self._bulk_selected = set()
             self._bulk_active = False
@@ -446,8 +446,8 @@ class BoardPageController:
         dialogs.export_scope_dialog(on_export)
 
     def _on_delete_cards(self) -> None:
-        def on_pin(card_id: int) -> None:
-            self._bs.toggle_card_template(card_id, is_template=True)
+        def on_repeat(card_id: int) -> None:
+            self._bs.toggle_card_repeat(card_id, is_repeat=True)
             # Reload board data so the preview reflects the change
             self._reload_data()
 
@@ -458,7 +458,7 @@ class BoardPageController:
                 self._bs.delete_all_cards(self._board.id)
             self._refresh()
 
-        dialogs.delete_cards_dialog(lambda: self._board, on_pin, on_delete)
+        dialogs.delete_cards_dialog(lambda: self._board, on_repeat, on_delete)
 
     def _on_manage_labels(self) -> None:
         """Open label management dialog."""

@@ -5,7 +5,7 @@ A Kanban-style task board built with NiceGUI and SQLModel.
 ## Features
 
 - **Cards** — Arranges in columns
-- **Card Properties** — color/label, high priority, template (not deleted upon board reset)
+- **Card Properties** — color/label, high priority, repeat (not deleted upon board reset)
 - **Bulk Operations** — Select multiple cards to edit
 - **Sorting** — Auto-sort cards by priority, completion, labels, date
 - **Export** — Export cards as Markdown or HTML (all or completed only)

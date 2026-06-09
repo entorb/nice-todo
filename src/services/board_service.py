@@ -86,9 +86,9 @@ class BoardService:
         """Set a card's completion status."""
         self._db.update_card_completed(card_id, is_completed=is_completed)
 
-    def toggle_card_template(self, card_id: int, *, is_template: bool) -> None:
-        """Set a card's template flag."""
-        self._db.update_card_template(card_id, is_template=is_template)
+    def toggle_card_repeat(self, card_id: int, *, is_repeat: bool) -> None:
+        """Set a card's repeat flag."""
+        self._db.update_card_repeat(card_id, is_repeat=is_repeat)
 
     def toggle_card_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
         """Cycle a card's prio flag (True / False / None)."""
@@ -111,8 +111,8 @@ class BoardService:
                 raise ValueError(msg)
             new_card = self._db.create_card(target_column_id, original.title, position)
             self._db.update_card_label(new_card.id, original.label_id)  # type: ignore[arg-type]
-            if original.is_template:
-                self._db.update_card_template(new_card.id, is_template=True)  # type: ignore[arg-type]
+            if original.is_repeat:
+                self._db.update_card_repeat(new_card.id, is_repeat=True)  # type: ignore[arg-type]
             if original.prio is not None:
                 self._db.update_card_prio(new_card.id, original.prio)  # type: ignore[arg-type]
             return new_card
@@ -129,9 +129,9 @@ class BoardService:
         """Assign or remove a label on multiple cards at once."""
         self._db.bulk_set_label(card_ids, label_id)
 
-    def bulk_set_template(self, card_ids: list[int], *, is_template: bool) -> None:
-        """Set template flag on multiple cards at once."""
-        self._db.bulk_set_template(card_ids, is_template=is_template)
+    def bulk_set_repeat(self, card_ids: list[int], *, is_repeat: bool) -> None:
+        """Set repeat flag on multiple cards at once."""
+        self._db.bulk_set_repeat(card_ids, is_repeat=is_repeat)
 
     def bulk_set_prio(self, card_ids: list[int], prio: bool | None) -> None:  # noqa: FBT001
         """Set prio flag on multiple cards at once."""
@@ -193,12 +193,12 @@ class BoardService:
             self._db.update_card_positions(positions)  # type: ignore[arg-type]
 
     def delete_completed_cards(self, board_id: int) -> int:
-        """Delete completed non-template cards, unset date_completed on templates."""
-        return self._db.delete_completed_non_template_cards(board_id)
+        """Delete completed non-repeat cards, unset date_completed on repeats."""
+        return self._db.delete_completed_non_repeat_cards(board_id)
 
     def delete_all_cards(self, board_id: int) -> int:
-        """Delete all non-template cards, unset date_completed on templates."""
-        return self._db.delete_all_non_template_cards(board_id)
+        """Delete all non-repeat cards, unset date_completed on repeats."""
+        return self._db.delete_all_non_repeat_cards(board_id)
 
     # Board management
 
