@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from nicegui import ui
@@ -187,21 +188,26 @@ async def _copy_export_result(content: str, fmt: str) -> None:
 def delete_cards_dialog(
     get_board: Callable[[], Board],
     on_repeat: Callable[[int], None],
-    on_delete: Callable[[bool], None],
+    on_delete: Callable[[str], None],
 ) -> ui.dialog:
     """Show a two-step dialog: pick scope, then confirm with card list."""
     with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[350px] max-w-[500px]"):
         ui.label("Delete Cards").classes("text-h6")
         scope = ui.toggle(
-            {True: "Completed Only", False: "All Cards"},
-            value=True,
+            {
+                "completed": "Completed Only",
+                "all": "All Cards",
+                "2w": "Completed > 2 weeks",
+            },
+            value="completed",
         ).classes("w-full")
         ui.label("Repeat cards will not be deleted.").classes(_STYLE_NOTE)
         preview = ui.column().classes("w-full gap-1 mt-2")
 
         def _render_preview() -> None:
             preview.clear()
-            completed_only: bool = scope.value
+            scope_val: str = scope.value
+            cutoff = datetime.now() - timedelta(days=14)  # noqa: DTZ005
             board = get_board()
             with preview:
                 total = 0
@@ -209,7 +215,16 @@ def delete_cards_dialog(
                     victims = [
                         c
                         for c in col.cards
-                        if not c.is_repeat and (not completed_only or c.is_completed)
+                        if not c.is_repeat
+                        and (
+                            scope_val == "all"
+                            or (scope_val == "completed" and c.is_completed)
+                            or (
+                                scope_val == "2w"
+                                and c.date_completed is not None
+                                and c.date_completed < cutoff
+                            )
+                        )
                     ]
                     if not victims:
                         continue
