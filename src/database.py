@@ -6,7 +6,7 @@ all text inputs are stripped of white spaces prior to insert/update
 
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from sqlmodel import Session, SQLModel, create_engine, select, update
@@ -279,6 +279,30 @@ class Database:
                 .where(Card.is_repeat == True)  # noqa: E712
                 .values(date_completed=None)
             )
+            s.commit()
+            return len(cards)
+
+    def delete_completed_non_repeat_cards_older_than(
+        self, board_id: int, days: int
+    ) -> int:
+        """Delete completed non-repeat cards completed > `days` ago."""
+        cutoff = datetime.now() - timedelta(days=days)  # noqa: DTZ005
+        with self.session() as s:
+            col_ids = [
+                c.id
+                for c in s.exec(select(Column).where(Column.board_id == board_id)).all()
+            ]
+            if not col_ids:
+                return 0
+            cards = s.exec(
+                select(Card)
+                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
+                .where(Card.date_completed.is_not(None))  # type: ignore[union-attr]
+                .where(Card.date_completed < cutoff)  # type: ignore[union-attr]
+                .where(Card.is_repeat == False)  # noqa: E712
+            ).all()
+            for card in cards:
+                s.delete(card)
             s.commit()
             return len(cards)
 
