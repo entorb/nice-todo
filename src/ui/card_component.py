@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from nicegui import ui
@@ -110,7 +111,7 @@ class CardComponent(ui.card):
 
     def _apply_completed_instantly(self, *, is_completed: bool) -> None:
         """Update card appearance instantly for optimistic UI."""
-        self.card_data.is_completed = is_completed
+        self.card_data.date_completed = datetime.now() if is_completed else None  # noqa: DTZ005
         # Update checkbox opacity
         if self._checkbox:
             opacity = "" if is_completed else _ICON_BTN_OPACITY
