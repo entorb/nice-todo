@@ -88,7 +88,7 @@ All board-level actions are in a dropdown menu (three-dot icon next to board nam
 - Bulk Label Mode (select multiple cards via checkboxes, assign label to all at once)
 - Export All (Markdown: board name as h1, columns as h2, card titles as bullets, empty columns omitted)
 - Export Completed (same structure, only completed cards, columns without completed cards omitted)
-- Delete Finished Cards (removes cards where is_completed=true AND is_template=false)
+- Delete Completed Cards (removes cards where is_completed=true AND is_template=false)
 - Delete All Cards (removes cards where is_template=false, templates survive)
 - Rename Board
 - Edit Board Key (with validation: non-empty, URL-safe chars, unique across boards)

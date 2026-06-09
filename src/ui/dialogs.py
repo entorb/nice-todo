@@ -193,7 +193,7 @@ def delete_cards_dialog(
     with ui.dialog() as dialog, ui.card().classes("p-4 min-w-[350px] max-w-[500px]"):
         ui.label("Delete Cards").classes("text-h6")
         scope = ui.toggle(
-            {True: "Finished Only", False: "All Cards"},
+            {True: "Completed Only", False: "All Cards"},
             value=True,
         ).classes("w-full")
         ui.label("Pinned cards will not be deleted.").classes(_STYLE_NOTE)
