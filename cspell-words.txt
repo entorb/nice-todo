@@ -1,5 +1,6 @@
 autogrow
 borderless
+docstrings
 dotenv
 draganddrop
 dragend
@@ -18,6 +19,7 @@ SonarQube
 startsecs
 strikethrough
 supervisorctl
+tablename
 tmpl
 Torben
 touchend
