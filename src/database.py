@@ -158,9 +158,7 @@ class Database:
         """Batch-update column positions."""
         with self.session() as s:
             for col_id, pos in positions:
-                if col := s.get(Column, col_id):
-                    col.position = pos
-                    s.add(col)
+                s.exec(update(Column).where(Column.id == col_id).values(position=pos))
             s.commit()
 
     def delete_column(self, column_id: int) -> None:
@@ -246,9 +244,7 @@ class Database:
         """Batch-update card positions."""
         with self.session() as s:
             for card_id, pos in positions:
-                if card := s.get(Card, card_id):
-                    card.position = pos
-                    s.add(card)
+                s.exec(update(Card).where(Card.id == card_id).values(position=pos))
             s.commit()
 
     def delete_card(self, card_id: int) -> None:
@@ -258,8 +254,14 @@ class Database:
                 s.delete(card)
                 s.commit()
 
-    def delete_completed_non_repeat_cards(self, board_id: int) -> int:
-        """Delete completed non-repeat cards and unset date_completed on repeats."""
+    def _delete_cards_where(
+        self,
+        board_id: int,
+        *,
+        extra_conditions: list | None = None,
+        reset_repeats: bool = False,
+    ) -> int:
+        """Delete non-repeat cards matching conditions, optionally reset repeats."""
         with self.session() as s:
             col_ids = [
                 c.id
@@ -267,99 +269,83 @@ class Database:
             ]
             if not col_ids:
                 return 0
-            cards = s.exec(
-                select(Card)
-                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.date_completed.is_not(None))  # type: ignore[union-attr]
-                .where(Card.is_repeat == False)  # noqa: E712
-            ).all()
+
+            conditions = [Card.column_id.in_(col_ids)]  # type: ignore[union-attr]
+            conditions.append(Card.is_repeat.is_(False))
+            if extra_conditions:
+                conditions.extend(extra_conditions)
+
+            cards = s.exec(select(Card).where(*conditions)).all()
             for card in cards:
                 s.delete(card)
-            # Unset date_completed for all repeat cards on the board
-            s.exec(
-                update(Card)
-                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.is_repeat == True)  # noqa: E712
-                .values(date_completed=None)
-            )
+
+            if reset_repeats:
+                s.exec(
+                    update(Card)
+                    .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
+                    .where(Card.is_repeat.is_(True))
+                    .values(date_completed=None),
+                )
+
             s.commit()
             return len(cards)
+
+    def delete_completed_non_repeat_cards(self, board_id: int) -> int:
+        """Delete completed non-repeat cards and unset date_completed on repeats."""
+        return self._delete_cards_where(
+            board_id,
+            extra_conditions=[Card.date_completed.is_not(None)],  # type: ignore[union-attr]
+            reset_repeats=True,
+        )
 
     def delete_completed_non_repeat_cards_older_than(
         self, board_id: int, days: int
     ) -> int:
         """Delete completed non-repeat cards completed > `days` ago."""
         cutoff = datetime.now() - timedelta(days=days)  # noqa: DTZ005
-        with self.session() as s:
-            col_ids = [
-                c.id
-                for c in s.exec(select(Column).where(Column.board_id == board_id)).all()
-            ]
-            if not col_ids:
-                return 0
-            cards = s.exec(
-                select(Card)
-                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.date_completed.is_not(None))  # type: ignore[union-attr]
-                .where(Card.date_completed < cutoff)  # type: ignore[union-attr]
-                .where(Card.is_repeat == False)  # noqa: E712
-            ).all()
-            for card in cards:
-                s.delete(card)
-            s.commit()
-            return len(cards)
+        return self._delete_cards_where(
+            board_id,
+            extra_conditions=[
+                Card.date_completed.is_not(None),  # type: ignore[union-attr]
+                Card.date_completed < cutoff,  # type: ignore[union-attr]
+            ],
+        )
 
     def delete_all_non_repeat_cards(self, board_id: int) -> int:
         """Delete all non-repeat cards and unset date_completed on repeats."""
-        with self.session() as s:
-            col_ids = [
-                c.id
-                for c in s.exec(select(Column).where(Column.board_id == board_id)).all()
-            ]
-            if not col_ids:
-                return 0
-            cards = s.exec(
-                select(Card)
-                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.is_repeat == False)  # noqa: E712
-            ).all()
-            for card in cards:
-                s.delete(card)
-            # Unset date_completed for all repeat cards on the board
-            s.exec(
-                update(Card)
-                .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                .where(Card.is_repeat == True)  # noqa: E712
-                .values(date_completed=None)
-            )
-            s.commit()
-            return len(cards)
+        return self._delete_cards_where(
+            board_id,
+            reset_repeats=True,
+        )
 
     def bulk_set_label(self, card_ids: list[int], label_id: int | None) -> None:
         """Set label on multiple cards at once."""
         with self.session() as s:
-            for card_id in card_ids:
-                if card := s.get(Card, card_id):
-                    card.label_id = label_id
-                    s.add(card)
+            s.exec(
+                update(Card)
+                .where(Card.id.in_(card_ids))  # type: ignore[union-attr]
+                .values(label_id=label_id),
+            )
             s.commit()
 
     def bulk_set_repeat(self, card_ids: list[int], *, is_repeat: bool) -> None:
         """Set repeat flag on multiple cards at once."""
         with self.session() as s:
-            for card_id in card_ids:
-                if card := s.get(Card, card_id):
-                    card.is_repeat = is_repeat
-                    s.add(card)
+            s.exec(
+                update(Card)
+                .where(Card.id.in_(card_ids))  # type: ignore[union-attr]
+                .values(is_repeat=is_repeat),
+            )
             s.commit()
 
     def bulk_set_prio(self, card_ids: list[int], prio: bool | None) -> None:  # noqa: FBT001
         """Set prio flag on multiple cards at once."""
         with self.session() as s:
-            for card_id in card_ids:
-                if card := s.get(Card, card_id):
-                    card.prio = prio
-                    s.add(card)
+            s.exec(
+                update(Card)
+                .where(Card.id.in_(card_ids))  # type: ignore[union-attr]
+                .values(prio=prio),
+            )
             s.commit()
 
     # Labels
