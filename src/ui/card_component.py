@@ -57,6 +57,7 @@ class CardComponent(ui.card):
         on_select: Callable[[int, bool], None] | None = None,
         on_set_label: Callable[[int, int | None], None] | None = None,
         on_move_copy: Callable[[int, str], None] | None = None,
+        on_mount: Callable[[int, CardComponent], None] | None = None,
         available_labels: list[Label] | None = None,
         bulk_mode: bool = False,
     ) -> None:
@@ -64,6 +65,8 @@ class CardComponent(ui.card):
         super().__init__()
         self.card_data = card
         self._label = label
+        self._bulk_mode = bulk_mode
+        self._available_labels = available_labels or []
         self._checkbox: ui.checkbox | None = None
         self._on_toggle_completed = on_toggle_completed
         self._on_toggle_repeat = on_toggle_repeat
@@ -78,20 +81,16 @@ class CardComponent(ui.card):
         text_color = _contrast_color(label.color) if label else _COLOR_TEXT_DARK
         color_class = "card-dark" if text_color == _COLOR_TEXT_DARK else "card-light"
 
-        with (
-            self.classes(f"w-full cursor-pointer {color_class}").style(style),
-            ui.row().classes("items-center w-full no-wrap gap-1"),
-        ):
-            self._build_drag_handle()
-            self._build_checkboxes(card, bulk_mode=bulk_mode)
-            self._build_title(card)
-            self._build_indicator_icons(card)
-            self._build_action_buttons(card, available_labels)
+        with self.classes(f"w-full cursor-pointer {color_class}").style(style):
+            self._build_content(card, available_labels)
 
         # Drag events
         self.on("dragstart", self._handle_dragstart)
         self.on("dragend", lambda: self.props(remove="draggable"))
         self.on("dragover.prevent", self._handle_dragover)
+
+        if on_mount:
+            on_mount(card.id if card.id is not None else 0, self)
 
     @staticmethod
     def _compute_style(card: Card, label: Label | None) -> str:
@@ -125,6 +124,22 @@ class CardComponent(ui.card):
         # Update card style
         new_style = self._compute_style(self.card_data, self._label)
         self.style(new_style)
+
+    def _build_content(self, card: Card, available_labels: list[Label] | None) -> None:
+        """Build the card's inner row content."""
+        with ui.row().classes("items-center w-full no-wrap gap-1"):
+            self._build_drag_handle()
+            self._build_checkboxes(card, bulk_mode=self._bulk_mode)
+            self._build_title(card)
+            self._build_indicator_icons(card)
+            self._build_action_buttons(card, available_labels)
+
+    def sync_visuals(self) -> None:
+        """Rebuild card inner content and style from current card_data."""
+        self.clear()
+        new_style = self._compute_style(self.card_data, self._label)
+        self.style(new_style)
+        self._build_content(self.card_data, self._available_labels)
 
     def _build_drag_handle(self) -> None:
         """Build the drag-handle icon."""
