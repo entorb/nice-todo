@@ -10,7 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 from src.models import Card
-from src.services.sort import card_sort_key
+from src.services.sort import card_sort_by_date, card_sort_by_prio_label_name
 
 if TYPE_CHECKING:
     from src.database import Database
@@ -181,10 +181,20 @@ class BoardService:
 
     # Bulk delete
 
-    def sort_cards(self, board_id: int, labels: list[Label]) -> None:
+    def sort_cards_by_prio_label_name(self, board_id: int, labels: list[Label]) -> None:
         """Sort cards per column with custom ordering."""
         label_map: dict[int | None, str] = {lb.id: (lb.name or "") for lb in labels}
-        key_fn = card_sort_key(label_map)
+        key_fn = card_sort_by_prio_label_name(label_map)
+        columns = self._db.get_columns(board_id)
+        for col in columns:
+            cards = self._db.get_cards(col.id)  # type: ignore[arg-type]
+            cards.sort(key=key_fn)
+            positions = [(c.id, idx) for idx, c in enumerate(cards)]
+            self._db.update_card_positions(positions)  # type: ignore[arg-type]
+
+    def sort_cards_by_date(self, board_id: int) -> None:
+        """Sort by date (upcoming: date_created, completed: date_completed)."""
+        key_fn = card_sort_by_date()
         columns = self._db.get_columns(board_id)
         for col in columns:
             cards = self._db.get_cards(col.id)  # type: ignore[arg-type]
