@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -33,6 +34,14 @@ if TYPE_CHECKING:
 # Module-level drag state (shared with column_component via import)
 dragged: CardComponent | None = None
 drop_target: CardComponent | None = None
+
+_URL_RE = re.compile(r"https?://[^\s<>\"'\]\[{}|\\^`]+")
+
+
+def _extract_url(text: str) -> str | None:
+    """Return first web URL in text, or None."""
+    m = _URL_RE.search(text)
+    return m.group(0) if m else None
 
 
 class CardComponent(ui.card):
@@ -177,6 +186,12 @@ class CardComponent(ui.card):
 
     def _build_title(self, card: Card) -> None:
         """Build the editable title input."""
+        self._title_container = ui.row().classes("flex-grow items-center no-wrap gap-0")
+        with self._title_container:
+            self._render_title_content(card)
+
+    def _render_title_content(self, card: Card) -> None:
+        """Render title input and optional URL button."""
         title_style = "font-size:0.9rem;word-wrap:break-word;"
         input_style = "font-size:0.9rem;"
         if card.prio is True:
@@ -198,9 +213,28 @@ class CardComponent(ui.card):
         ) -> None:
             if self._on_edit_title and inp.value:
                 self._on_edit_title(cid, inp.value)  # type: ignore[arg-type]
+            self.card_data.title = inp.value
+            self._refresh_title_content()
 
         title_input.on(_EVENT_KEYDOWN_ENTER, on_commit)
         title_input.on("blur", on_commit)
+
+        url = _extract_url(card.title)
+        if url:
+            (
+                ui.button(
+                    icon="open_in_new",
+                    on_click=lambda _, u=url: ui.navigate.to(u, new_tab=True),
+                )
+                .props(_ICON_BTN_PROPS + " color=primary")
+                .tooltip(url)
+            )
+
+    def _refresh_title_content(self) -> None:
+        """Rebuild title content after edit to sync URL button."""
+        self._title_container.clear()
+        with self._title_container:
+            self._render_title_content(self.card_data)
 
     def _build_indicator_icons(self, card: Card) -> None:
         """Build clickable indicator icons for repeat and prio flags."""
