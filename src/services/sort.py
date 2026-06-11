@@ -19,7 +19,7 @@ def _prio_rank(card: Card) -> int:
     return 2
 
 
-def card_sort_key(
+def card_sort_by_prio_label_name(
     label_map: dict[int | None, str],
 ) -> Callable:
     """Return a sort-key function for cards."""
@@ -43,6 +43,25 @@ def card_sort_key(
             label_name.lower(),  # 4 label name
             c.title.lower(),  # 5 card title
             # c.date_created.isoformat(),  # 5 date
+        )
+
+    return key
+
+
+def card_sort_by_date() -> Callable:
+    """Sort-key: not completed by date_created ASC, completed by date_completed ASC."""
+
+    def key(c: Card) -> tuple[bool, str, str]:
+        if c.is_completed:
+            return (
+                True,
+                c.date_completed.isoformat() if c.date_completed else "",
+                "",
+            )
+        return (
+            False,
+            "",
+            c.date_created.isoformat() if c.date_created else "",
         )
 
     return key
