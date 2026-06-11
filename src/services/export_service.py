@@ -5,7 +5,7 @@ from __future__ import annotations
 from html import escape
 from typing import TYPE_CHECKING
 
-from src.services.sort import card_sort_key
+from src.services.sort import card_sort_by_prio_label_name
 
 if TYPE_CHECKING:
     from src.models import Board, Card, Label
@@ -40,7 +40,7 @@ class ExportService:
         label_map: dict[int | None, str] = {
             lb.id: lb.name for lb in labels if lb.id is not None
         }
-        key_fn = card_sort_key(label_map)
+        key_fn = card_sort_by_prio_label_name(label_map)
         lines = []
         for col in board.columns:
             cards = (
@@ -70,7 +70,7 @@ class ExportService:
         label_map: dict[int | None, str] = {
             lb.id: lb.name for lb in labels if lb.id is not None
         }
-        key_fn = card_sort_key(label_map)
+        key_fn = card_sort_by_prio_label_name(label_map)
         lines = [f"## {board.name}", ""]
         for col in board.columns:
             cards = (
@@ -100,7 +100,7 @@ class ExportService:
         label_map: dict[int | None, str] = {
             lb.id: lb.name for lb in labels if lb.id is not None
         }
-        key_fn = card_sort_key(label_map)
+        key_fn = card_sort_by_prio_label_name(label_map)
         parts = [f"<h2>{escape(board.name)}</h2>"]
         for col in board.columns:
             cards = (

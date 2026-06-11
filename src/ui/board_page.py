@@ -134,8 +134,16 @@ class BoardPageController:
             ).props("flat dense round").classes("text-white").tooltip("Bulk edit mode")
             ui.button(
                 icon="swap_vert",
-                on_click=self._on_sort_cards,
-            ).props("flat dense round").classes("text-white").tooltip("Sort cards")
+                on_click=self._on_sort_cards_by_prio_label_name,
+            ).props("flat dense round").classes("text-white").tooltip(
+                "Sort cards (prio / label / title)"
+            )
+            ui.button(
+                icon="calendar_month",
+                on_click=self._on_sort_cards_by_date,
+            ).props("flat dense round").classes("text-white").tooltip(
+                "Sort cards by date"
+            )
             ui.button(
                 icon="sync",
                 on_click=self._refresh,
@@ -179,7 +187,11 @@ class BoardPageController:
         ui.separator()
         ui.menu_item("Manage Labels", on_click=self._on_manage_labels)
         ui.separator()
-        ui.menu_item("Sort Cards", on_click=self._on_sort_cards)
+        ui.menu_item(
+            "Sort Cards by prio, label, title",
+            on_click=self._on_sort_cards_by_prio_label_name,
+        )
+        ui.menu_item("Sort Cards by date", on_click=self._on_sort_cards_by_date)
         ui.menu_item("Export", on_click=self._on_export)
         ui.menu_item("Delete Cards", on_click=self._on_delete_cards)
         ui.separator()
@@ -441,8 +453,12 @@ class BoardPageController:
 
     # -- board-level handlers --
 
-    def _on_sort_cards(self) -> None:
-        self._bs.sort_cards(self._board.id, self._labels)
+    def _on_sort_cards_by_prio_label_name(self) -> None:
+        self._bs.sort_cards_by_prio_label_name(self._board.id, self._labels)
+        self._refresh()
+
+    def _on_sort_cards_by_date(self) -> None:
+        self._bs.sort_cards_by_date(self._board.id)
         self._refresh()
 
     def _on_export(self) -> None:
