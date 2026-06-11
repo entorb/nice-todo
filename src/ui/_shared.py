@@ -1,5 +1,12 @@
 """Shared constants and helpers for UI components."""
 
+# Drag state shared between card_component and column_component.
+# Avoids circular imports: values are CardComponent/ColumnComponent instances.
+drag_card: object = None
+drop_target: object = None
+drag_column: object = None
+
+
 # Events
 _EVENT_KEYDOWN_ENTER = "keydown.enter.prevent"
 
