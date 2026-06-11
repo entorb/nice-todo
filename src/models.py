@@ -13,6 +13,8 @@ from sqlmodel import Field, Relationship, SQLModel
 class Label(SQLModel, table=True):
     """A global tag with name and color, shared across all boards."""
 
+    __tablename__ = "label"
+
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(default="", nullable=False)
     color: str = Field(default="#cccccc", nullable=False)
@@ -21,12 +23,14 @@ class Label(SQLModel, table=True):
 class Card(SQLModel, table=True):
     """A task item within a column."""
 
+    __tablename__ = "card"
+
     id: int | None = Field(default=None, primary_key=True)
-    column_id: int = Field(foreign_key="column_.id", nullable=False)
+    column_id: int = Field(foreign_key="column_.id", nullable=False, index=True)
     title: str = Field(default="", nullable=False)
     position: int = Field(default=0, nullable=False)
     is_repeat: bool = Field(default=False, nullable=False)
-    label_id: int | None = Field(default=None, foreign_key="label.id")
+    label_id: int | None = Field(default=None, foreign_key="label.id", index=True)
     prio: bool | None = Field(default=None, nullable=True)
     date_created: datetime = Field(default_factory=datetime.now, nullable=False)
     date_completed: datetime | None = Field(default=None, nullable=True)
@@ -43,23 +47,31 @@ class Column(SQLModel, table=True):
     __tablename__ = "column_"
 
     id: int | None = Field(default=None, primary_key=True)
-    board_id: int = Field(foreign_key="board.id", nullable=False)
+    board_id: int = Field(foreign_key="board.id", nullable=False, index=True)
     name: str = Field(default="", nullable=False)
     position: int = Field(default=0, nullable=False)
 
     cards: list[Card] = Relationship(
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "order_by": "Card.position",
+        },
     )
 
 
 class Board(SQLModel, table=True):
     """The top-level entity containing columns and labels."""
 
+    __tablename__ = "board"
+
     id: int | None = Field(default=None, primary_key=True)
-    key: str = Field(unique=True, nullable=False, default="")
+    key: str = Field(unique=True, nullable=False, default="", index=True)
     name: str = Field(default="", nullable=False)
-    last_login: str = Field(default="", nullable=False)
+    last_login: datetime | None = Field(default=None, nullable=True)
 
     columns: list[Column] = Relationship(
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "order_by": "Column.position",
+        },
     )

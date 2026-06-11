@@ -9,6 +9,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from src.models import Board, Card, Column, Label
@@ -57,6 +58,8 @@ class Database:
                         conn.execute(
                             f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type}"
                         )
+            # Data migration: convert empty last_login strings to NULL
+            conn.execute("UPDATE board SET last_login = NULL WHERE last_login = ''")
 
     def session(self) -> Session:
         """Create a new database session."""
@@ -65,15 +68,15 @@ class Database:
     # Board
 
     def get_board_by_key(self, key: str) -> Board | None:
-        """Load board with all relationships, sorted by position."""
+        """Load board with all relationships eagerly loaded."""
         with self.session() as s:
-            board = s.exec(select(Board).where(Board.key == key)).first()
-            if board is None:
-                return None
-            # Eagerly access relationships before session closes
-            board.columns.sort(key=lambda c: c.position)
-            for col in board.columns:
-                col.cards.sort(key=lambda c: c.position)
+            board = s.exec(
+                select(Board)
+                .where(Board.key == key)
+                .options(
+                    selectinload(Board.columns).selectinload(Column.cards),
+                )
+            ).first()
             return board
 
     def get_all_boards(self) -> list[Board]:
@@ -94,7 +97,7 @@ class Database:
         """Update the board's last login timestamp."""
         with self.session() as s:
             if board := s.get(Board, board_id):
-                board.last_login = datetime.now().isoformat()  # noqa: DTZ005
+                board.last_login = datetime.now()  # noqa: DTZ005
                 s.add(board)
                 s.commit()
 
