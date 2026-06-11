@@ -24,10 +24,14 @@ _PROJECT_DIR = Path(__file__).resolve().parent.parent
 DB_FILE = _PROJECT_DIR / "sqlite.db"
 
 ICON = _PROJECT_DIR / "src/icons/favicon.svg"
-assert ICON.is_file(), f"Icon not found: {ICON}"
+if not ICON.is_file():
+    msg = f"Icon not found: {ICON}"
+    raise RuntimeError(msg)
 
 APPLE_ICON = _PROJECT_DIR / "src/icons/apple-touch-icon.png"
-assert APPLE_ICON.is_file(), f"Apple touch icon not found: {APPLE_ICON}"
+if not APPLE_ICON.is_file():
+    msg = f"Apple touch icon not found: {APPLE_ICON}"
+    raise RuntimeError(msg)
 APPLE_ICON_URL = f"{SUBPATH}/apple-touch-icon.png"
 app.add_static_file(local_file=APPLE_ICON, url_path="/apple-touch-icon.png")
 
