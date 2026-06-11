@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from src.models import Card
 
 
@@ -19,7 +21,7 @@ def _prio_rank(card: Card) -> int:
 
 def card_sort_key(
     label_map: dict[int | None, str],
-) -> callable:
+) -> Callable:
     """Return a sort-key function for cards."""
 
     def key(c: Card) -> tuple[bool, int, bool, str, str]:
