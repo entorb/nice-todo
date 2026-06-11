@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src.ui import _shared
 from src.ui._shared import (
     _COLOR_COLUMN_BG,
     _COLOR_COLUMN_HIGHLIGHT,
@@ -18,9 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from src.models import Column, Label
-
-# Module-level drag state for columns
-dragged_column: ColumnComponent | None = None
 
 
 class ColumnComponent(ui.column):
@@ -132,8 +130,7 @@ class ColumnComponent(ui.column):
         self.on("drop", self._handle_drop)
 
     def _handle_col_dragstart(self) -> None:
-        global dragged_column  # noqa: PLW0603
-        dragged_column = self
+        _shared.drag_column = self
 
     def _highlight(self) -> None:
         self.style(f"background:{_COLOR_COLUMN_HIGHLIGHT};")
@@ -142,44 +139,44 @@ class ColumnComponent(ui.column):
         self.style(f"background:{_COLOR_COLUMN_BG};")
 
     def _handle_drop(self) -> None:
-        global dragged_column  # noqa: PLW0603
-        import src.ui.card_component as _card_mod  # noqa: PLC0415
-
         self._unhighlight()
 
-        if dragged_column is not None and dragged_column is not self:
+        dragged_col = _shared.drag_column
+        if dragged_col is not None and dragged_col is not self:
             if self._on_drop_column:
                 self._on_drop_column(
-                    dragged_column.column_data.id,  # type: ignore[arg-type]
-                    self.column_data.id,  # type: ignore[arg-type]
+                    dragged_col.column_data.id,  # type: ignore[union-attr]
+                    self.column_data.id,  # type: ignore[union-attr]
                 )
-            dragged_column = None
+            _shared.drag_column = None
             return
 
-        dragged_column = None
+        _shared.drag_column = None
 
-        if _card_mod.dragged is None:
+        if _shared.drag_card is None:
             return
 
         target_index = len(self.column_data.cards)
+        dc = _shared.drag_card
+        dt = _shared.drop_target
         if (
-            _card_mod.drop_target is not None
-            and _card_mod.drop_target.parent_slot is not None
-            and _card_mod.drop_target.parent_slot.parent is self
+            dt is not None
+            and dt.parent_slot is not None  # type: ignore[union-attr]
+            and dt.parent_slot.parent is self  # type: ignore[union-attr]
         ):
-            target_index = self.default_slot.children.index(_card_mod.drop_target)
+            target_index = self.default_slot.children.index(dt)
 
-        _card_mod.dragged.move(target_container=self, target_index=target_index)
+        dc.move(target_container=self, target_index=target_index)  # type: ignore[union-attr]
 
         if self._on_drop_card:
             self._on_drop_card(
-                _card_mod.dragged.card_data.id,  # type: ignore[arg-type]
-                self.column_data.id,  # type: ignore[arg-type]
+                dc.card_data.id,  # type: ignore[union-attr]
+                self.column_data.id,  # type: ignore[union-attr]
                 target_index,
             )
 
-        _card_mod.dragged = None
-        _card_mod.drop_target = None
+        _shared.drag_card = None
+        _shared.drop_target = None
 
     def _handle_add_card(self, inp: ui.input, column_id: int | None) -> None:
         title = inp.value.strip() if inp.value else ""

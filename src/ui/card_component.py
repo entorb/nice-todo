@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src.ui import _shared
 from src.ui._shared import (
     _COLOR_CARD_BG,
     _COLOR_CARD_COMPLETED_BG,
@@ -30,10 +31,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from src.models import Card, Label
-
-# Module-level drag state (shared with column_component via import)
-dragged: CardComponent | None = None
-drop_target: CardComponent | None = None
 
 _URL_RE = re.compile(r"https?://[^\s<>\"'\]\[{}|\\^`]+")
 
@@ -409,9 +406,7 @@ class CardComponent(ui.card):
         return dialog
 
     def _handle_dragstart(self) -> None:
-        global dragged  # noqa: PLW0603
-        dragged = self
+        _shared.drag_card = self
 
     def _handle_dragover(self) -> None:
-        global drop_target  # noqa: PLW0603
-        drop_target = self
+        _shared.drop_target = self
