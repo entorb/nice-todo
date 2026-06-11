@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from src.models import Board, Label
     from src.services.board_service import BoardService
     from src.services.export_service import ExportService
+    from src.ui.card_component import CardComponent
 
 
 def _init_polyfill() -> str:
@@ -93,6 +94,7 @@ class BoardPageController:
         self._labels: list[Label] = []
         self._bulk_active = False
         self._bulk_selected: set[int] = set()
+        self._card_components: dict[int, CardComponent] = {}
         self._container = ui.element("div").classes("w-full")
 
     # -- lifecycle --
@@ -248,6 +250,7 @@ class BoardPageController:
             ).props(_btn).style(_btn_style).tooltip("Cancel bulk edit")
 
     def _render_columns(self) -> None:
+        self._card_components = {}
         cbs = {
             "on_toggle_completed": self._on_toggle_completed,
             "on_toggle_repeat": self._on_toggle_repeat,
@@ -258,6 +261,7 @@ class BoardPageController:
             "on_set_label": self._on_set_card_label,
             "on_move_copy": self._on_move_copy,
             "available_labels": self._labels,
+            "on_mount": self._on_card_mount,
         }
         with (
             ui.row()
@@ -313,7 +317,9 @@ class BoardPageController:
 
     def _on_set_card_label(self, card_id: int, label_id: int | None) -> None:
         self._bs.set_card_label(card_id, label_id)
-        self._refresh()
+        cc = self._card_components.get(card_id)
+        if cc:
+            cc.sync_visuals()
 
     def _on_toggle_completed(self, card_id: int, is_completed: bool) -> None:  # noqa: FBT001
         """Save card completion (UI already updated optimistically)."""
@@ -321,11 +327,15 @@ class BoardPageController:
 
     def _on_toggle_repeat(self, card_id: int, is_repeat: bool) -> None:  # noqa: FBT001
         self._bs.toggle_card_repeat(card_id, is_repeat=is_repeat)
-        self._refresh()
+        cc = self._card_components.get(card_id)
+        if cc:
+            cc.sync_visuals()
 
     def _on_toggle_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
         self._bs.toggle_card_prio(card_id, prio)
-        self._refresh()
+        cc = self._card_components.get(card_id)
+        if cc:
+            cc.sync_visuals()
 
     def _on_delete_card(self, card_id: int) -> None:
         self._bs.delete_card(card_id)
@@ -347,6 +357,10 @@ class BoardPageController:
             col_ids.insert(col_ids.index(tgt_id), src_id)
             self._bs.reorder_columns(col_ids)
             self._refresh()
+
+    def _on_card_mount(self, card_id: int, component: CardComponent) -> None:
+        """Register a card component for targeted visual updates."""
+        self._card_components[card_id] = component
 
     def _on_select_card(self, card_id: int, selected: bool) -> None:  # noqa: FBT001
         if selected:
