@@ -7,8 +7,6 @@ Usage: python -m src.delete_board <board_id_or_key>
 import sys
 from pathlib import Path
 
-from sqlmodel import select
-
 from src.database import Database
 from src.models import Board
 
@@ -34,7 +32,7 @@ def main() -> None:
             print(f"Error: Board '{identifier}' not found.", file=sys.stderr)
             sys.exit(1)
         with db.session() as s:
-            board = s.exec(select(Board).where(Board.id == board_id)).first()
+            board = s.get(Board, board_id)
 
     if board is None:
         print(f"Error: Board '{identifier}' not found.", file=sys.stderr)

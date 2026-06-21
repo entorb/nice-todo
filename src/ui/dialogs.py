@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src.ui._shared import _COMPLETED_CUTOFF_DAYS
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -207,7 +209,7 @@ def delete_cards_dialog(
         def _render_preview() -> None:
             preview.clear()
             scope_val: str = scope.value
-            cutoff = datetime.now() - timedelta(days=14)  # noqa: DTZ005
+            cutoff = datetime.now() - timedelta(days=_COMPLETED_CUTOFF_DAYS)  # noqa: DTZ005
             board = get_board()
             with preview:
                 total = 0
