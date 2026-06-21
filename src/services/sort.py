@@ -24,25 +24,13 @@ def card_sort_by_prio_label_name(
 ) -> Callable:
     """Return a sort-key function for cards."""
 
-    def key(c: Card) -> tuple[bool, int, bool, str, str]:
-        if c.is_completed:
-            return (
-                True,  # 1 completed
-                _prio_rank(c),  # 2 prio
-                False,  # 3 has label
-                c.date_completed.isoformat()
-                if c.date_completed
-                else "",  # 4 date completed
-                "",  # 5 none
-            )
+    def key(c: Card) -> tuple[bool, int, str, str]:
         label_name = label_map.get(c.label_id, "") if c.label_id else ""  # type: ignore[arg-type]
         return (
-            False,  # 1 completed
+            c.is_completed,  # 1 completed
             _prio_rank(c),  # 2 prio
-            not bool(label_name),  # 3 label: has label before no label
-            label_name.lower(),  # 4 label name
-            c.title.lower(),  # 5 card title
-            # c.date_created.isoformat(),  # 5 date
+            label_name.lower(),  # 3 label
+            c.title.lower(),  # 4 title
         )
 
     return key
@@ -51,17 +39,12 @@ def card_sort_by_prio_label_name(
 def card_sort_by_date() -> Callable:
     """Sort-key: not completed by date_created ASC, completed by date_completed ASC."""
 
-    def key(c: Card) -> tuple[bool, str, str]:
-        if c.is_completed:
-            return (
-                True,
-                c.date_completed.isoformat() if c.date_completed else "",
-                "",
-            )
+    def key(c: Card) -> tuple[bool, str]:
         return (
-            False,
-            "",
-            c.date_created.isoformat() if c.date_created else "",
+            c.is_completed,  # 1 completed
+            c.date_completed.isoformat()  # 2 date completed or created
+            if c.date_completed
+            else c.date_created.isoformat(),
         )
 
     return key
