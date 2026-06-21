@@ -56,29 +56,17 @@ REPEAT_ICON_UNSET = "remove_circle_outline"
 
 LABEL_ICON_REMOVE = "label_off"
 
-
-def prio_action_icon(current: bool | None) -> str:  # noqa: FBT001
-    """Return icon representing the action (what clicking will set)."""
-    if current is True:
-        return PRIO_ICON_UNSET
-    if current is False:
-        return PRIO_ICON_CLEAR
-    return PRIO_ICON_SET
+# -- Completed card cutoff --
+_COMPLETED_CUTOFF_DAYS = 14
 
 
-def prio_action_label(current: bool | None) -> str:  # noqa: FBT001
-    """Return menu label for the prio action."""
-    if current is True:
-        return "Mark Not Important"
-    if current is False:
-        return "Clear Flag"
-    return "Mark Important"
+PRIO_CHOICES: list[tuple[bool | None, str, str]] = [
+    (True, PRIO_ICON_SET, "Mark Important"),
+    (False, PRIO_ICON_UNSET, "Mark Not Important"),
+    (None, PRIO_ICON_CLEAR, "Remove Prio"),
+]
 
 
-def next_prio(current: bool | None) -> bool | None:  # noqa: FBT001
-    """Cycle prio: True -> False -> None -> True."""
-    if current is True:
-        return False
-    if current is False:
-        return None
-    return True
+def prio_choices(current: bool | None) -> list[tuple[bool | None, str, str]]:  # noqa: FBT001
+    """Return (value, icon, label) for each prio option except current."""
+    return [(v, i, lb) for v, i, lb in PRIO_CHOICES if v is not current]

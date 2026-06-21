@@ -8,10 +8,9 @@ from nicegui import ui
 
 from src.ui import dialogs
 from src.ui._shared import (
+    _COMPLETED_CUTOFF_DAYS,
     LABEL_ICON_REMOVE,
-    PRIO_ICON_CLEAR,
-    PRIO_ICON_SET,
-    PRIO_ICON_UNSET,
+    PRIO_CHOICES,
     REPEAT_ICON_SET,
 )
 from src.ui.column_component import ColumnComponent
@@ -210,6 +209,29 @@ class BoardPageController:
             ui.icon("checklist").classes("text-white")
             ui.label("Select cards, then:").classes("text-body2 text-white")
 
+            # Repeat
+            ui.button(
+                icon=REPEAT_ICON_SET,
+                on_click=lambda: self._on_bulk_repeat(is_repeat=True),
+            ).props(_btn).style(_btn_style).tooltip("Set repeat")
+            ui.button(
+                icon=REPEAT_ICON_SET,
+                on_click=lambda: self._on_bulk_repeat(is_repeat=False),
+            ).props(_unset_btn).style(_unset_style).tooltip("Unset repeat")
+
+            ui.separator().props("vertical")
+
+            # Prio
+            _prio_props = {True: f"{_btn} color=red", False: _btn, None: _unset_btn}
+            _prio_style = {True: "", False: _btn_style, None: _unset_style}
+            for pv, p_icon, p_label in PRIO_CHOICES:
+                ui.button(
+                    icon=p_icon,
+                    on_click=lambda _, v=pv: self._on_bulk_prio(prio=v),
+                ).props(_prio_props[pv]).style(_prio_style[pv]).tooltip(p_label)
+
+            ui.separator().props("vertical")
+
             # Label buttons (colored chips)
             for lbl in self._labels:
                 ui.button(
@@ -225,34 +247,6 @@ class BoardPageController:
                     icon=LABEL_ICON_REMOVE,
                     on_click=lambda: self._on_bulk_label(None),
                 ).props(_unset_btn).style(_unset_style).tooltip("Remove label")
-
-            ui.separator().props("vertical")
-
-            # Repeat
-            ui.button(
-                icon=REPEAT_ICON_SET,
-                on_click=lambda: self._on_bulk_repeat(is_repeat=True),
-            ).props(_btn).style(_btn_style).tooltip("Set repeat")
-            ui.button(
-                icon=REPEAT_ICON_SET,
-                on_click=lambda: self._on_bulk_repeat(is_repeat=False),
-            ).props(_unset_btn).style(_unset_style).tooltip("Unset repeat")
-
-            ui.separator().props("vertical")
-
-            # Prio flag
-            ui.button(
-                icon=PRIO_ICON_SET,
-                on_click=lambda: self._on_bulk_prio(prio=True),
-            ).props(f"{_btn} color=red").tooltip("Mark important")
-            ui.button(
-                icon=PRIO_ICON_UNSET,
-                on_click=lambda: self._on_bulk_prio(prio=False),
-            ).props(_btn).style(_btn_style).tooltip("Mark not important")
-            ui.button(
-                icon=PRIO_ICON_CLEAR,
-                on_click=lambda: self._on_bulk_prio(prio=None),
-            ).props(_unset_btn).style(_unset_style).tooltip("Clear flag")
 
             ui.separator().props("vertical")
 
@@ -331,6 +325,7 @@ class BoardPageController:
         self._bs.set_card_label(card_id, label_id)
         cc = self._card_components.get(card_id)
         if cc:
+            cc.card_data.label_id = label_id
             cc.sync_visuals()
 
     def _on_toggle_completed(self, card_id: int, is_completed: bool) -> None:  # noqa: FBT001
@@ -341,12 +336,14 @@ class BoardPageController:
         self._bs.toggle_card_repeat(card_id, is_repeat=is_repeat)
         cc = self._card_components.get(card_id)
         if cc:
+            cc.card_data.is_repeat = is_repeat
             cc.sync_visuals()
 
     def _on_toggle_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
         self._bs.toggle_card_prio(card_id, prio)
         cc = self._card_components.get(card_id)
         if cc:
+            cc.card_data.prio = prio
             cc.sync_visuals()
 
     def _on_delete_card(self, card_id: int) -> None:
@@ -485,7 +482,9 @@ class BoardPageController:
             if mode == "all":
                 self._bs.delete_all_cards(self._board.id)
             elif mode == "2w":
-                self._bs.delete_completed_cards_older_than(self._board.id, days=14)
+                self._bs.delete_completed_cards_older_than(
+                    self._board.id, days=_COMPLETED_CUTOFF_DAYS
+                )
             else:
                 self._bs.delete_completed_cards(self._board.id)
             self._refresh()
@@ -552,9 +551,8 @@ class BoardPageController:
 
     def _on_rename_board(self) -> None:
         def on_save(new_name: str, new_key: str) -> None:
-            name = new_name.strip()
-            if not name:
-                ui.notify("Board name is required", type="warning")
+            name = self._validate_board_name(new_name)
+            if name is None:
                 return
             key_error = self._bs.update_board_key(self._board.id, new_key)
             if key_error:
@@ -573,11 +571,18 @@ class BoardPageController:
             validate_key,
         )
 
+    @staticmethod
+    def _validate_board_name(raw: str) -> str | None:
+        name = raw.strip()
+        if not name:
+            ui.notify("Board name is required", type="warning")
+            return None
+        return name
+
     def _on_new_board(self) -> None:
         def on_save(name: str, new_key: str) -> None:
-            name = name.strip()
-            if not name:
-                ui.notify("Board name is required", type="warning")
+            name = self._validate_board_name(name)
+            if name is None:
                 return
             error = self._bs.create_board(name, new_key)
             if error:

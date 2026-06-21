@@ -98,7 +98,6 @@ class Database:
         with self.session() as s:
             if board := s.get(Board, board_id):
                 board.last_login = datetime.now()  # noqa: DTZ005
-                s.add(board)
                 s.commit()
 
     def update_board_name(self, board_id: int, name: str) -> None:
@@ -106,7 +105,6 @@ class Database:
         with self.session() as s:
             if board := s.get(Board, board_id):
                 board.name = name.strip()
-                s.add(board)
                 s.commit()
 
     def update_board_key(self, board_id: int, new_key: str) -> None:
@@ -114,7 +112,6 @@ class Database:
         with self.session() as s:
             if board := s.get(Board, board_id):
                 board.key = new_key.strip()
-                s.add(board)
                 s.commit()
 
     def delete_board(self, board_id: int) -> None:
@@ -151,7 +148,6 @@ class Database:
         with self.session() as s:
             if col := s.get(Column, column_id):
                 col.name = name.strip()
-                s.add(col)
                 s.commit()
 
     def update_column_positions(self, positions: list[tuple[int, int]]) -> None:
@@ -196,7 +192,6 @@ class Database:
         with self.session() as s:
             if card := s.get(Card, card_id):
                 card.title = _clean_title(title)
-                s.add(card)
                 s.commit()
 
     def update_card_completed(self, card_id: int, *, is_completed: bool) -> None:
@@ -204,7 +199,6 @@ class Database:
         with self.session() as s:
             if card := s.get(Card, card_id):
                 card.date_completed = datetime.now() if is_completed else None  # noqa: DTZ005
-                s.add(card)
                 s.commit()
 
     def update_card_repeat(self, card_id: int, *, is_repeat: bool) -> None:
@@ -212,7 +206,6 @@ class Database:
         with self.session() as s:
             if card := s.get(Card, card_id):
                 card.is_repeat = is_repeat
-                s.add(card)
                 s.commit()
 
     def update_card_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
@@ -220,7 +213,6 @@ class Database:
         with self.session() as s:
             if card := s.get(Card, card_id):
                 card.prio = prio
-                s.add(card)
                 s.commit()
 
     def update_card_label(self, card_id: int, label_id: int | None) -> None:
@@ -228,7 +220,6 @@ class Database:
         with self.session() as s:
             if card := s.get(Card, card_id):
                 card.label_id = label_id
-                s.add(card)
                 s.commit()
 
     def move_card(self, card_id: int, target_column_id: int, position: int) -> None:
@@ -237,7 +228,6 @@ class Database:
             if card := s.get(Card, card_id):
                 card.column_id = target_column_id
                 card.position = position
-                s.add(card)
                 s.commit()
 
     def update_card_positions(self, positions: list[tuple[int, int]]) -> None:
@@ -370,7 +360,6 @@ class Database:
             if label := s.get(Label, label_id):
                 label.name = name.strip()
                 label.color = color.strip().lower()
-                s.add(label)
                 s.commit()
 
     def delete_label(self, label_id: int) -> None:
@@ -380,7 +369,6 @@ class Database:
             # but we do it explicitly for clarity)
             for card in s.exec(select(Card).where(Card.label_id == label_id)).all():
                 card.label_id = None
-                s.add(card)
             if label := s.get(Label, label_id):
                 s.delete(label)
             s.commit()

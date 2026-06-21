@@ -22,9 +22,7 @@ from src.ui._shared import (
     REPEAT_ICON_SET,
     REPEAT_ICON_UNSET,
     _contrast_color,
-    next_prio,
-    prio_action_icon,
-    prio_action_label,
+    prio_choices,
 )
 
 if TYPE_CHECKING:
@@ -139,7 +137,8 @@ class CardComponent(ui.card):
         self.clear()
         new_style = self._compute_style(self.card_data, self._label)
         self.style(new_style)
-        self._build_content(self.card_data, self._available_labels)
+        with self:
+            self._build_content(self.card_data, self._available_labels)
 
     def _build_drag_handle(self) -> None:
         """Build the drag-handle icon."""
@@ -296,26 +295,6 @@ class CardComponent(ui.card):
             ui.button(icon="more_vert").props(_ICON_BTN_PROPS).style(_ICON_BTN_OPACITY),
             ui.menu() as ctx_menu,
         ):
-            # Prio flag (cycle: True -> False -> None -> True)
-            nxt = next_prio(card.prio)
-            imp_icon = prio_action_icon(card.prio)
-            imp_label = prio_action_label(card.prio)
-            with (
-                ui.menu_item(
-                    on_click=lambda _, cid=card.id, n=nxt: (
-                        (
-                            self._on_toggle_prio(cid, n),  # type: ignore[misc]
-                            ctx_menu.close(),
-                        )
-                        if self._on_toggle_prio
-                        else None
-                    ),
-                ),
-                ui.row().classes("items-center no-wrap gap-2"),
-            ):
-                ui.icon(imp_icon).classes("text-lg")
-                ui.label(imp_label)
-
             # Repeat toggle
             tpl_icon = REPEAT_ICON_SET
             if card.is_repeat:
@@ -338,6 +317,24 @@ class CardComponent(ui.card):
             ):
                 ui.icon(tpl_icon).classes("text-lg")
                 ui.label(tpl_label)
+
+            # Prio flag — show all options except current
+            for pv, p_icon, p_label in prio_choices(card.prio):
+                with (
+                    ui.menu_item(
+                        on_click=lambda _, cid=card.id, v=pv: (
+                            (
+                                self._on_toggle_prio(cid, v),  # type: ignore[misc]
+                                ctx_menu.close(),
+                            )
+                            if self._on_toggle_prio
+                            else None
+                        ),
+                    ),
+                    ui.row().classes("items-center no-wrap gap-2"),
+                ):
+                    ui.icon(p_icon).classes("text-lg")
+                    ui.label(p_label)
 
             # Set label (opens dialog)
             if label_dialog:
