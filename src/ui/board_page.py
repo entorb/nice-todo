@@ -6,19 +6,20 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src.services.export_service import export as _export
 from src.ui import dialogs
 from src.ui._shared import (
     _COMPLETED_CUTOFF_DAYS,
     LABEL_ICON_REMOVE,
     PRIO_CHOICES,
     REPEAT_ICON_SET,
+    _DragState,
 )
 from src.ui.column_component import ColumnComponent
 
 if TYPE_CHECKING:
+    from src.database import Database
     from src.models import Board, Label
-    from src.services.board_service import BoardService
-    from src.services.export_service import ExportService
     from src.ui.card_component import CardComponent
 
 
@@ -82,23 +83,17 @@ class BoardPageController:
     def __init__(
         self,
         key: str,
-        board_service: BoardService,
-        export_service: ExportService,
+        db: Database,
     ) -> None:
         """Set up controller state."""
         self._key = key
-        self._bs = board_service
-        self._es = export_service
+        self._db = db
         self._board: Board | None = None
         self._labels: list[Label] = []
         self._bulk_active = False
         self._bulk_selected: set[int] = set()
         self._card_components: dict[int, CardComponent] = {}
-        self._drag_state: dict[str, object | None] = {
-            "drag_card": None,
-            "drop_target": None,
-            "drag_column": None,
-        }
+        self._drag_state = _DragState()
         self._container = ui.element("div").classes("w-full")
 
     # -- lifecycle --
@@ -116,10 +111,10 @@ class BoardPageController:
             self._render_board()
 
     def _reload_data(self) -> None:
-        board = self._bs.load_board(self._key)
+        board = self._db.get_board_by_key(self._key)
         if board is not None:
             self._board = board
-        self._labels = self._bs.get_labels()
+        self._labels = self._db.get_labels()
 
     # -- render --
 
@@ -165,7 +160,7 @@ class BoardPageController:
 
     def _render_board_switcher(self) -> None:
         """Render a dropdown to quickly switch between boards."""
-        all_boards = self._bs.get_all_boards()
+        all_boards = self._db.get_all_boards()
         if len(all_boards) <= 1:
             ui.label(self._board.name).classes("text-h5").style(
                 "font-weight:700;color:white;letter-spacing:-0.5px;"
@@ -296,11 +291,11 @@ class BoardPageController:
     # -- column handlers --
 
     def _on_add_column(self) -> None:
-        self._bs.add_column(self._board.id)
+        self._db.create_column(self._board.id)
         self._refresh()
 
     def _on_rename_column(self, column_id: int, name: str) -> None:
-        error = self._bs.rename_column(self._board.id, column_id, name)
+        error = self._db.update_column_name(column_id, name, self._board.id)
         if error:
             ui.notify(error, type="warning")
             self._refresh()
@@ -308,13 +303,14 @@ class BoardPageController:
     def _on_delete_column(self, column_id: int) -> None:
         dialogs.confirm_dialog(
             "Delete this column and all its cards?",
-            lambda: (self._bs.delete_column(column_id), self._refresh()),
+            lambda: (self._db.delete_column(column_id), self._refresh()),
         )
 
     # -- card handlers --
 
     def _on_add_card(self, column_id: int, title: str) -> None:
-        self._bs.add_card(column_id, title)
+        pos = len(self._db.get_cards(column_id))
+        self._db.create_card(column_id, title, pos)
         self._refresh()
         ui.run_javascript(
             f"""setTimeout(function() {{
@@ -325,10 +321,10 @@ class BoardPageController:
         )
 
     def _on_edit_title(self, card_id: int, title: str) -> None:
-        self._bs.edit_card_title(card_id, title)
+        self._db.update_card_title(card_id, title)
 
     def _on_set_card_label(self, card_id: int, label_id: int | None) -> None:
-        self._bs.set_card_label(card_id, label_id)
+        self._db.update_card_label(card_id, label_id)
         cc = self._card_components.get(card_id)
         if cc:
             cc.card_data.label_id = label_id
@@ -336,24 +332,24 @@ class BoardPageController:
 
     def _on_toggle_completed(self, card_id: int, is_completed: bool) -> None:  # noqa: FBT001
         """Save card completion (UI already updated optimistically)."""
-        self._bs.toggle_card_completed(card_id, is_completed=is_completed)
+        self._db.update_card_completed(card_id, is_completed=is_completed)
 
     def _on_toggle_repeat(self, card_id: int, is_repeat: bool) -> None:  # noqa: FBT001
-        self._bs.toggle_card_repeat(card_id, is_repeat=is_repeat)
+        self._db.update_card_repeat(card_id, is_repeat=is_repeat)
         cc = self._card_components.get(card_id)
         if cc:
             cc.card_data.is_repeat = is_repeat
             cc.sync_visuals()
 
     def _on_toggle_prio(self, card_id: int, prio: bool | None) -> None:  # noqa: FBT001
-        self._bs.toggle_card_prio(card_id, prio)
+        self._db.update_card_prio(card_id, prio)
         cc = self._card_components.get(card_id)
         if cc:
             cc.card_data.prio = prio
             cc.sync_visuals()
 
     def _on_delete_card(self, card_id: int) -> None:
-        self._bs.delete_card(card_id)
+        self._db.delete_card(card_id)
         self._refresh()
 
     def _on_drop_card(
@@ -362,7 +358,7 @@ class BoardPageController:
         target_column_id: int,
         position: int,
     ) -> None:
-        self._bs.move_card(card_id, target_column_id, position)
+        self._db.move_card(card_id, target_column_id, position)
         self._refresh()
 
     def _on_drop_column(self, src_id: int, tgt_id: int) -> None:
@@ -370,7 +366,8 @@ class BoardPageController:
         if src_id in col_ids and tgt_id in col_ids:
             col_ids.remove(src_id)
             col_ids.insert(col_ids.index(tgt_id), src_id)
-            self._bs.reorder_columns(col_ids)
+            positions = [(cid, idx) for idx, cid in enumerate(col_ids)]
+            self._db.update_column_positions(positions)
             self._refresh()
 
     def _on_card_mount(self, card_id: int, component: CardComponent) -> None:
@@ -387,21 +384,21 @@ class BoardPageController:
 
     def _on_move_copy(self, card_id: int, action: str) -> None:
         source_col_name = self._find_card_column_name(card_id)
-        other_boards = [b for b in self._bs.get_all_boards() if b.id != self._board.id]
+        other_boards = [b for b in self._db.get_all_boards() if b.id != self._board.id]
 
         # Load full column data for other boards so the dialog can list them
         loaded_boards: list[Board] = []
         for b in other_boards:
-            full = self._bs.load_board(b.key)
+            full = self._db.load_board(b.key)
             if full and full.columns:
                 loaded_boards.append(full)
 
         def on_confirm(col_id: int, act: str) -> None:
             if act == "move":
-                self._bs.move_card(card_id, col_id, self._bs.card_count(col_id))
+                self._db.move_card(card_id, col_id, len(self._db.get_cards(col_id)))
                 ui.notify("Card moved", type="positive")
             else:
-                self._bs.copy_card(card_id, col_id, self._bs.card_count(col_id))
+                self._db.copy_card(card_id, col_id, len(self._db.get_cards(col_id)))
                 ui.notify("Card copied", type="positive")
             self._refresh()
 
@@ -429,14 +426,14 @@ class BoardPageController:
 
     def _on_bulk_label(self, label_id: int | None) -> None:
         if self._bulk_selected:
-            self._bs.bulk_set_label(list(self._bulk_selected), label_id)
+            self._db.bulk_set_label(list(self._bulk_selected), label_id)
             self._bulk_selected = set()
             self._bulk_active = False
             self._refresh()
 
     def _on_bulk_repeat(self, *, is_repeat: bool) -> None:
         if self._bulk_selected:
-            self._bs.bulk_set_repeat(
+            self._db.bulk_set_repeat(
                 list(self._bulk_selected),
                 is_repeat=is_repeat,
             )
@@ -446,7 +443,7 @@ class BoardPageController:
 
     def _on_bulk_prio(self, *, prio: bool | None) -> None:
         if self._bulk_selected:
-            self._bs.bulk_set_prio(
+            self._db.bulk_set_prio(
                 list(self._bulk_selected),
                 prio,
             )
@@ -457,18 +454,18 @@ class BoardPageController:
     # -- board-level handlers --
 
     def _on_sort_cards_by_prio_label_name(self) -> None:
-        self._bs.sort_cards_by_prio_label_name(self._board, self._labels)
+        self._db.sort_cards_by_prio_label_name(self._board, self._labels)
         self._refresh()
 
     def _on_sort_cards_by_date(self) -> None:
-        self._bs.sort_cards_by_date(self._board)
+        self._db.sort_cards_by_date(self._board)
         self._refresh()
 
     def _on_export(self) -> None:
         def on_export(completed_only: bool, fmt: str) -> str | None:  # noqa: FBT001
-            fresh = self._bs.load_board(self._key)
+            fresh = self._db.get_board_by_key(self._key)
             if fresh:
-                return self._es.export(
+                return _export(
                     fresh,
                     self._labels,
                     completed_only=completed_only,
@@ -480,19 +477,19 @@ class BoardPageController:
 
     def _on_delete_cards(self) -> None:
         def on_repeat(card_id: int) -> None:
-            self._bs.toggle_card_repeat(card_id, is_repeat=True)
+            self._db.toggle_card_repeat(card_id, is_repeat=True)
             # Reload board data so the preview reflects the change
             self._reload_data()
 
         def on_delete(mode: str) -> None:
             if mode == "all":
-                self._bs.delete_all_cards(self._board.id)
+                self._db.delete_all_non_repeat_cards(self._board.id)
             elif mode == "2w":
-                self._bs.delete_completed_cards_older_than(
+                self._db.delete_completed_non_repeat_cards_older_than(
                     self._board.id, days=_COMPLETED_CUTOFF_DAYS
                 )
             else:
-                self._bs.delete_completed_cards(self._board.id)
+                self._db.delete_completed_non_repeat_cards(self._board.id)
             self._refresh()
 
         dialogs.delete_cards_dialog(lambda: self._board, on_repeat, on_delete)
@@ -501,14 +498,14 @@ class BoardPageController:
         """Open label management dialog."""
 
         def on_create(name: str, color: str) -> None:
-            result = self._bs.create_label(name, color)
+            result = self._db.create_label(name, color)
             if isinstance(result, str):
                 ui.notify(result, type="warning")
             else:
                 self._refresh()
 
         def on_update(lid: int, name: str, color: str) -> None:
-            error = self._bs.update_label(lid, name, color)
+            error = self._db.update_label(lid, name, color)
             if error:
                 ui.notify(error, type="warning")
             else:
@@ -536,7 +533,7 @@ class BoardPageController:
                     ui.button(
                         icon="delete",
                         on_click=lambda _, lid=lbl.id: (
-                            self._bs.delete_label(lid),
+                            self._db.delete_label(lid),
                             dlg.close(),
                             self._refresh(),
                         ),
@@ -560,15 +557,15 @@ class BoardPageController:
             name = self._validate_board_name(new_name)
             if name is None:
                 return
-            key_error = self._bs.update_board_key(self._board.id, new_key)
+            key_error = self._db.update_board_key(self._board.id, new_key)
             if key_error:
                 ui.notify(key_error, type="warning")
                 return
-            self._bs.rename_board(self._board.id, name)
+            self._db.update_board_name(self._board.id, name)
             ui.navigate.to(f"/?key={new_key}")
 
         def validate_key(key: str) -> str | None:
-            return self._bs.validate_board_key(key, exclude_id=self._board.id)
+            return self._db.validate_board_key(key, exclude_id=self._board.id)
 
         dialogs.rename_board_dialog(
             self._board.name,
@@ -590,7 +587,7 @@ class BoardPageController:
             name = self._validate_board_name(name)
             if name is None:
                 return
-            error = self._bs.create_board(name, new_key)
+            error = self._db.add_board(new_key, name)
             if error:
                 ui.notify(error, type="warning")
                 return
@@ -600,13 +597,13 @@ class BoardPageController:
             "",
             "",
             on_save,
-            self._bs.validate_board_key,
+            self._db.validate_board_key,
         )
 
 
-def _render_board_selector(board_service: BoardService) -> None:
+def _render_board_selector(db: Database) -> None:
     """Show a list of all boards when no key is provided."""
-    all_boards = board_service.get_all_boards()
+    all_boards = db.get_all_boards()
 
     # if no boards in DB
     if not all_boards:
@@ -626,8 +623,7 @@ def _render_board_selector(board_service: BoardService) -> None:
 
 
 def create_board_page(
-    board_service: BoardService,
-    export_service: ExportService,
+    db: Database,
     apple_icon_url: str,
 ) -> None:
     """Register the NiceGUI board page route."""
@@ -641,15 +637,15 @@ def create_board_page(
 
         # no key parameter -> board selection
         if not key:
-            _render_board_selector(board_service)
+            _render_board_selector(db)
             return
 
-        board = board_service.load_board(key)
+        board = db.get_board_by_key(key)
 
         # no board of that key
         if board is None:
-            _render_board_selector(board_service)
+            _render_board_selector(db)
             return
 
-        ctrl = BoardPageController(key, board_service, export_service)
+        ctrl = BoardPageController(key, db)
         ctrl.load_and_render()
