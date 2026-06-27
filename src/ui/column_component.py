@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
-from src.ui import _shared
 from src.ui._shared import (
     _COLOR_COLUMN_BG,
     _COLOR_COLUMN_HIGHLIGHT,
@@ -27,6 +26,7 @@ class ColumnComponent(ui.column):
     def __init__(  # noqa: PLR0913
         self,
         column: Column,
+        drag_state: dict[str, object | None] | None = None,
         labels: list[Label] | None = None,
         *,
         on_rename: Callable[[int, str], None] | None = None,
@@ -40,6 +40,7 @@ class ColumnComponent(ui.column):
         """Initialize column component."""
         super().__init__()
         self.column_data = column
+        self._drag_state = drag_state
         self._on_rename = on_rename
         self._on_add_card = on_add_card
         self._on_delete_column = on_delete_column
@@ -102,6 +103,7 @@ class ColumnComponent(ui.column):
                 card_label = labels_map.get(card.label_id) if card.label_id else None
                 CardComponent(
                     card,
+                    drag_state=self._drag_state,
                     label=card_label,
                     bulk_mode=bulk_mode,
                     **(card_callbacks or {}),
@@ -130,7 +132,8 @@ class ColumnComponent(ui.column):
         self.on("drop", self._handle_drop)
 
     def _handle_col_dragstart(self) -> None:
-        _shared.drag_column = self
+        if self._drag_state is not None:
+            self._drag_state["drag_column"] = self
 
     def _highlight(self) -> None:
         self.style(f"background:{_COLOR_COLUMN_HIGHLIGHT};")
@@ -141,24 +144,28 @@ class ColumnComponent(ui.column):
     def _handle_drop(self) -> None:
         self._unhighlight()
 
-        dragged_col = _shared.drag_column
+        ds = self._drag_state
+        if ds is None:
+            return
+
+        dragged_col = ds.get("drag_column")
         if dragged_col is not None and dragged_col is not self:
             if self._on_drop_column:
                 self._on_drop_column(
                     dragged_col.column_data.id,  # type: ignore[union-attr]
                     self.column_data.id,  # type: ignore[union-attr]
                 )
-            _shared.drag_column = None
+            ds["drag_column"] = None
             return
 
-        _shared.drag_column = None
+        ds["drag_column"] = None
 
-        if _shared.drag_card is None:
+        dc = ds.get("drag_card")
+        if dc is None:
             return
 
         target_index = len(self.column_data.cards)
-        dc = _shared.drag_card
-        dt = _shared.drop_target
+        dt = ds.get("drop_target")
         if (
             dt is not None
             and dt.parent_slot is not None  # type: ignore[union-attr]
@@ -175,8 +182,8 @@ class ColumnComponent(ui.column):
                 target_index,
             )
 
-        _shared.drag_card = None
-        _shared.drop_target = None
+        ds["drag_card"] = None
+        ds["drop_target"] = None
 
     def _handle_add_card(self, inp: ui.input, column_id: int | None) -> None:
         title = inp.value.strip() if inp.value else ""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from nicegui import ui
@@ -209,7 +209,9 @@ def delete_cards_dialog(
         def _render_preview() -> None:
             preview.clear()
             scope_val: str = scope.value
-            cutoff = datetime.now() - timedelta(days=_COMPLETED_CUTOFF_DAYS)  # noqa: DTZ005
+            cutoff = datetime.now(tz=UTC).replace(tzinfo=None) - timedelta(
+                days=_COMPLETED_CUTOFF_DAYS
+            )
             board = get_board()
             with preview:
                 total = 0

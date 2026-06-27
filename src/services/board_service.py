@@ -9,12 +9,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from src.models import Card
 from src.services.sort import card_sort_by_date, card_sort_by_prio_label_name
 
 if TYPE_CHECKING:
     from src.database import Database
-    from src.models import Board, Column, Label
+    from src.models import Board, Card, Column, Label
 
 
 class BoardService:
@@ -104,18 +103,7 @@ class BoardService:
 
     def copy_card(self, card_id: int, target_column_id: int, position: int) -> Card:
         """Copy a card to a target column at the given position."""
-        with self._db.session() as s:
-            original = s.get(Card, card_id)
-            if original is None:
-                msg = f"Card {card_id} not found"
-                raise ValueError(msg)
-            new_card = self._db.create_card(target_column_id, original.title, position)
-            self._db.update_card_label(new_card.id, original.label_id)  # type: ignore[arg-type]
-            if original.is_repeat:
-                self._db.update_card_repeat(new_card.id, is_repeat=True)  # type: ignore[arg-type]
-            if original.prio is not None:
-                self._db.update_card_prio(new_card.id, original.prio)  # type: ignore[arg-type]
-            return new_card
+        return self._db.copy_card(card_id, target_column_id, position)
 
     def card_count(self, column_id: int) -> int:
         """Return the number of cards in a column."""
@@ -181,24 +169,20 @@ class BoardService:
 
     # Bulk delete
 
-    def sort_cards_by_prio_label_name(self, board_id: int, labels: list[Label]) -> None:
+    def sort_cards_by_prio_label_name(self, board: Board, labels: list[Label]) -> None:
         """Sort cards per column with custom ordering."""
         label_map: dict[int | None, str] = {lb.id: (lb.name or "") for lb in labels}
         key_fn = card_sort_by_prio_label_name(label_map)
-        columns = self._db.get_columns(board_id)
-        for col in columns:
-            cards = self._db.get_cards(col.id)  # type: ignore[arg-type]
-            cards.sort(key=key_fn)
+        for col in board.columns:
+            cards = sorted(col.cards, key=key_fn)
             positions = [(c.id, idx) for idx, c in enumerate(cards)]
             self._db.update_card_positions(positions)  # type: ignore[arg-type]
 
-    def sort_cards_by_date(self, board_id: int) -> None:
+    def sort_cards_by_date(self, board: Board) -> None:
         """Sort by date (upcoming: date_created, completed: date_completed)."""
         key_fn = card_sort_by_date()
-        columns = self._db.get_columns(board_id)
-        for col in columns:
-            cards = self._db.get_cards(col.id)  # type: ignore[arg-type]
-            cards.sort(key=key_fn)
+        for col in board.columns:
+            cards = sorted(col.cards, key=key_fn)
             positions = [(c.id, idx) for idx, c in enumerate(cards)]
             self._db.update_card_positions(positions)  # type: ignore[arg-type]
 

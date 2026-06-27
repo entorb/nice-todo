@@ -6,13 +6,18 @@ all text inputs are stripped of white spaces prior to insert/update
 
 import re
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from src.models import Board, Card, Column, Label
+
+
+def _utcnow() -> datetime:
+    """Return current UTC time as naive datetime (safe for SQLite storage)."""
+    return datetime.now(tz=UTC).replace(tzinfo=None)
 
 
 def _clean_title(title: str) -> str:
@@ -97,7 +102,7 @@ class Database:
         """Update the board's last login timestamp."""
         with self.session() as s:
             if board := s.get(Board, board_id):
-                board.last_login = datetime.now()  # noqa: DTZ005
+                board.last_login = _utcnow()
                 s.commit()
 
     def update_board_name(self, board_id: int, name: str) -> None:
@@ -198,7 +203,7 @@ class Database:
         """Toggle a card's completion status via date_completed."""
         with self.session() as s:
             if card := s.get(Card, card_id):
-                card.date_completed = datetime.now() if is_completed else None  # noqa: DTZ005
+                card.date_completed = _utcnow() if is_completed else None
                 s.commit()
 
     def update_card_repeat(self, card_id: int, *, is_repeat: bool) -> None:
@@ -236,6 +241,26 @@ class Database:
             for card_id, pos in positions:
                 s.exec(update(Card).where(Card.id == card_id).values(position=pos))
             s.commit()
+
+    def copy_card(self, card_id: int, target_column_id: int, position: int) -> Card:
+        """Copy a card to a target column in one session."""
+        with self.session() as s:
+            original = s.get(Card, card_id)
+            if original is None:
+                msg = f"Card {card_id} not found"
+                raise ValueError(msg)
+            new_card = Card(
+                column_id=target_column_id,
+                title=original.title,
+                position=position,
+                label_id=original.label_id,
+                is_repeat=original.is_repeat,
+                prio=original.prio,
+            )
+            s.add(new_card)
+            s.commit()
+            s.refresh(new_card)
+            return new_card
 
     def delete_card(self, card_id: int) -> None:
         """Delete a single card."""
@@ -292,7 +317,7 @@ class Database:
         self, board_id: int, days: int
     ) -> int:
         """Delete completed non-repeat cards completed > `days` ago."""
-        cutoff = datetime.now() - timedelta(days=days)  # noqa: DTZ005
+        cutoff = _utcnow() - timedelta(days=days)
         return self._delete_cards_where(
             board_id,
             extra_conditions=[
