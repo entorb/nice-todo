@@ -94,6 +94,11 @@ class BoardPageController:
         self._bulk_active = False
         self._bulk_selected: set[int] = set()
         self._card_components: dict[int, CardComponent] = {}
+        self._drag_state: dict[str, object | None] = {
+            "drag_card": None,
+            "drop_target": None,
+            "drag_column": None,
+        }
         self._container = ui.element("div").classes("w-full")
 
     # -- lifecycle --
@@ -277,6 +282,7 @@ class BoardPageController:
             for col in self._board.columns:
                 ColumnComponent(
                     col,
+                    drag_state=self._drag_state,
                     labels=self._labels,
                     on_rename=self._on_rename_column,
                     on_add_card=self._on_add_card,
@@ -451,11 +457,11 @@ class BoardPageController:
     # -- board-level handlers --
 
     def _on_sort_cards_by_prio_label_name(self) -> None:
-        self._bs.sort_cards_by_prio_label_name(self._board.id, self._labels)
+        self._bs.sort_cards_by_prio_label_name(self._board, self._labels)
         self._refresh()
 
     def _on_sort_cards_by_date(self) -> None:
-        self._bs.sort_cards_by_date(self._board.id)
+        self._bs.sort_cards_by_date(self._board)
         self._refresh()
 
     def _on_export(self) -> None:
