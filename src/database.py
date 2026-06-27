@@ -13,6 +13,9 @@ from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from src.models import Board, Card, Column, Label
+from src.services.sort import card_sort_by_date, card_sort_by_prio_label_name
+
+_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9._~-]+$")
 
 
 def _utcnow() -> datetime:
@@ -73,37 +76,50 @@ class Database:
     # Board
 
     def get_board_by_key(self, key: str) -> Board | None:
-        """Load board with all relationships eagerly loaded."""
-        with self.session() as s:
-            board = s.exec(
+        """Load board with all relationships eagerly loaded, update last_login."""
+        with self.session() as sess:
+            board = sess.exec(
                 select(Board)
                 .where(Board.key == key)
                 .options(
                     selectinload(Board.columns).selectinload(Column.cards),
                 )
             ).first()
-            return board
+        if board is not None and board.id is not None:
+            with self.session() as sess:
+                if b := sess.get(Board, board.id):
+                    b.last_login = _utcnow()
+                    sess.commit()
+        return board
 
     def get_all_boards(self) -> list[Board]:
         """Return all boards (lightweight, no relationships eagerly loaded)."""
         with self.session() as s:
             return list(s.exec(select(Board).order_by(Board.name)).all())
 
-    def add_board(self, key: str, name: str) -> Board:
-        """Create a new board."""
+    def validate_board_key(self, key: str, exclude_id: int | None = None) -> str | None:
+        """Return error message if key is invalid, None if valid."""
+        if not key:
+            return "Board key must not be empty"
+        if not _KEY_PATTERN.match(key):
+            return "Board key contains invalid characters"
+        existing = self.get_board_by_key(key)
+        if existing is not None and (exclude_id is None or existing.id != exclude_id):
+            return "Board key must be unique"
+        return None
+
+    def add_board(self, key: str, name: str) -> Board | str:
+        """Create a new board. Return Board on success, error string on failure."""
+        key_clean = key.strip().lower()
+        error = self.validate_board_key(key_clean)
+        if error:
+            return error
         with self.session() as s:
-            board = Board(key=key.strip().lower(), name=name.strip())
+            board = Board(key=key_clean, name=name.strip())
             s.add(board)
             s.commit()
             s.refresh(board)
             return board
-
-    def update_board_last_login(self, board_id: int) -> None:
-        """Update the board's last login timestamp."""
-        with self.session() as s:
-            if board := s.get(Board, board_id):
-                board.last_login = _utcnow()
-                s.commit()
 
     def update_board_name(self, board_id: int, name: str) -> None:
         """Rename the board."""
@@ -112,12 +128,17 @@ class Database:
                 board.name = name.strip()
                 s.commit()
 
-    def update_board_key(self, board_id: int, new_key: str) -> None:
-        """Change the board's URL key."""
+    def update_board_key(self, board_id: int, new_key: str) -> str | None:
+        """Change the board's URL key. Return error string or None."""
+        key_clean = new_key.strip()
+        error = self.validate_board_key(key_clean, exclude_id=board_id)
+        if error:
+            return error
         with self.session() as s:
             if board := s.get(Board, board_id):
-                board.key = new_key.strip()
+                board.key = key_clean
                 s.commit()
+        return None
 
     def delete_board(self, board_id: int) -> None:
         """Delete board and all associated data (cascades via relationships)."""
@@ -139,21 +160,36 @@ class Database:
                 ).all()
             )
 
-    def create_column(self, board_id: int, name: str, position: int) -> Column:
-        """Create a new column."""
+    def create_column(self, board_id: int) -> Column:
+        """Create a new column with unique default name at end."""
+        existing = self.get_columns(board_id)
+        name = "New Column"
+        names = {c.name for c in existing}
+        if name in names:
+            i = 2
+            while f"{name} {i}" in names:
+                i += 1
+            name = f"{name} {i}"
         with self.session() as s:
-            col = Column(board_id=board_id, name=name.strip(), position=position)
+            col = Column(board_id=board_id, name=name, position=len(existing))
             s.add(col)
             s.commit()
             s.refresh(col)
             return col
 
-    def update_column_name(self, column_id: int, name: str) -> None:
-        """Rename a column."""
+    def update_column_name(
+        self, column_id: int, name: str, board_id: int
+    ) -> str | None:
+        """Rename a column. Return error string if duplicate, None on success."""
+        existing = self.get_columns(board_id)
+        for col in existing:
+            if col.id != column_id and col.name == name:
+                return f"Column name '{name}' already exists"
         with self.session() as s:
             if col := s.get(Column, column_id):
                 col.name = name.strip()
                 s.commit()
+        return None
 
     def update_column_positions(self, positions: list[tuple[int, int]]) -> None:
         """Batch-update column positions."""
@@ -363,29 +399,76 @@ class Database:
             )
             s.commit()
 
+    # Sorting
+
+    def sort_cards_by_prio_label_name(self, board: Board, labels: list[Label]) -> None:
+        """Sort cards per column: completed, prio, label name, title."""
+        label_map: dict[int | None, str] = {lb.id: (lb.name or "") for lb in labels}
+        key_fn = card_sort_by_prio_label_name(label_map)
+        for col in board.columns:
+            cards = sorted(col.cards, key=key_fn)
+            positions = [(c.id, idx) for idx, c in enumerate(cards)]
+            self.update_card_positions(positions)  # type: ignore[arg-type]
+
+    def sort_cards_by_date(self, board: Board) -> None:
+        """Sort by date (incomplete: date_created, completed: date_completed)."""
+        key_fn = card_sort_by_date()
+        for col in board.columns:
+            cards = sorted(col.cards, key=key_fn)
+            positions = [(c.id, idx) for idx, c in enumerate(cards)]
+            self.update_card_positions(positions)  # type: ignore[arg-type]
+
     # Labels
+
+    def _validate_label(
+        self,
+        name: str,
+        color: str,
+        exclude_label_id: int | None = None,
+    ) -> str | None:
+        """Return error message if name or color is duplicate, else None."""
+        labels = self.get_labels()
+        for lbl in labels:
+            if lbl.id == exclude_label_id:
+                continue
+            if lbl.name == name:
+                return f"Label name '{name}' already exists"
+            if lbl.color.lower() == color.lower():
+                return f"Label color '{color}' already in use"
+        return None
 
     def get_labels(self) -> list[Label]:
         """Get all labels."""
         with self.session() as s:
             return list(s.exec(select(Label).order_by(Label.name)).all())
 
-    def create_label(self, name: str, color: str) -> Label:
-        """Create a new label."""
+    def create_label(self, name: str, color: str) -> Label | str:
+        """Create a new label. Return Label on success, error string on failure."""
+        name_clean = name.strip()
+        color_clean = color.strip().lower()
+        error = self._validate_label(name_clean, color_clean)
+        if error:
+            return error
         with self.session() as s:
-            label = Label(name=name.strip(), color=color.strip().lower())
+            label = Label(name=name_clean, color=color_clean)
             s.add(label)
             s.commit()
             s.refresh(label)
             return label
 
-    def update_label(self, label_id: int, name: str, color: str) -> None:
-        """Update a label's name and color."""
+    def update_label(self, label_id: int, name: str, color: str) -> str | None:
+        """Update a label. Return error string on failure, None on success."""
+        name_clean = name.strip()
+        color_clean = color.strip().lower()
+        error = self._validate_label(name_clean, color_clean, exclude_label_id=label_id)
+        if error:
+            return error
         with self.session() as s:
             if label := s.get(Label, label_id):
-                label.name = name.strip()
-                label.color = color.strip().lower()
+                label.name = name_clean
+                label.color = color_clean
                 s.commit()
+        return None
 
     def delete_label(self, label_id: int) -> None:
         """Delete a label and clear it from all cards that had it."""

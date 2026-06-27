@@ -21,6 +21,7 @@ from src.ui._shared import (
     REPEAT_ICON_SET,
     REPEAT_ICON_UNSET,
     _contrast_color,
+    _DragState,
     prio_choices,
 )
 
@@ -44,7 +45,7 @@ class CardComponent(ui.card):
     def __init__(  # noqa: PLR0913
         self,
         card: Card,
-        drag_state: dict[str, object | None] | None = None,
+        drag_state: _DragState | None = None,
         label: Label | None = None,
         *,
         on_toggle_completed: Callable[[int, bool], None] | None = None,
@@ -422,8 +423,8 @@ class CardComponent(ui.card):
 
     def _handle_dragstart(self) -> None:
         if self._drag_state is not None:
-            self._drag_state["drag_card"] = self
+            self._drag_state.drag_card = self
 
     def _handle_dragover(self) -> None:
         if self._drag_state is not None:
-            self._drag_state["drop_target"] = self
+            self._drag_state.drop_target = self

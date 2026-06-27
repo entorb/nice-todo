@@ -11,6 +11,7 @@ from src.ui._shared import (
     _COLOR_COLUMN_HIGHLIGHT,
     _EVENT_KEYDOWN_ENTER,
     _OPACITY_COLUMN_DELETE,
+    _DragState,
 )
 from src.ui.card_component import CardComponent
 
@@ -26,7 +27,7 @@ class ColumnComponent(ui.column):
     def __init__(  # noqa: PLR0913
         self,
         column: Column,
-        drag_state: dict[str, object | None] | None = None,
+        drag_state: _DragState | None = None,
         labels: list[Label] | None = None,
         *,
         on_rename: Callable[[int, str], None] | None = None,
@@ -133,7 +134,7 @@ class ColumnComponent(ui.column):
 
     def _handle_col_dragstart(self) -> None:
         if self._drag_state is not None:
-            self._drag_state["drag_column"] = self
+            self._drag_state.drag_column = self
 
     def _highlight(self) -> None:
         self.style(f"background:{_COLOR_COLUMN_HIGHLIGHT};")
@@ -148,42 +149,42 @@ class ColumnComponent(ui.column):
         if ds is None:
             return
 
-        dragged_col = ds.get("drag_column")
+        dragged_col = ds.drag_column
         if dragged_col is not None and dragged_col is not self:
             if self._on_drop_column:
                 self._on_drop_column(
-                    dragged_col.column_data.id,  # type: ignore[union-attr]
-                    self.column_data.id,  # type: ignore[union-attr]
+                    dragged_col.column_data.id,
+                    self.column_data.id,
                 )
-            ds["drag_column"] = None
+            ds.drag_column = None
             return
 
-        ds["drag_column"] = None
+        ds.drag_column = None
 
-        dc = ds.get("drag_card")
+        dc = ds.drag_card
         if dc is None:
             return
 
         target_index = len(self.column_data.cards)
-        dt = ds.get("drop_target")
+        dt = ds.drop_target
         if (
             dt is not None
-            and dt.parent_slot is not None  # type: ignore[union-attr]
-            and dt.parent_slot.parent is self  # type: ignore[union-attr]
+            and dt.parent_slot is not None
+            and dt.parent_slot.parent is self
         ):
             target_index = self.default_slot.children.index(dt)
 
-        dc.move(target_container=self, target_index=target_index)  # type: ignore[union-attr]
+        dc.move(target_container=self, target_index=target_index)
 
         if self._on_drop_card:
             self._on_drop_card(
-                dc.card_data.id,  # type: ignore[union-attr]
-                self.column_data.id,  # type: ignore[union-attr]
+                dc.card_data.id,
+                self.column_data.id,
                 target_index,
             )
 
-        ds["drag_card"] = None
-        ds["drop_target"] = None
+        ds.drag_card = None
+        ds.drop_target = None
 
     def _handle_add_card(self, inp: ui.input, column_id: int | None) -> None:
         title = inp.value.strip() if inp.value else ""

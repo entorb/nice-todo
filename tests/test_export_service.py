@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from src.models import Board, Card, Column
-from src.services.export_service import ExportService
+from src.services.export_service import export
 
 
 def _make_board(name: str, columns: list[Column]) -> Board:
@@ -36,7 +36,7 @@ class TestExportAll:
                 _make_column("Done", [_make_card("Task 3", is_completed=True)]),
             ],
         )
-        result = ExportService().export(board, [])
+        result = export(board, [])
         expected = (
             "## My Board\n\n### To Do\n- [ ] Task 1\n- [ ] Task 2\n"
             "\n### Done\n- [x] Task 3\n"
@@ -51,13 +51,13 @@ class TestExportAll:
                 _make_column("Has Cards", [_make_card("A")]),
             ],
         )
-        result = ExportService().export(board, [])
+        result = export(board, [])
         assert "### Empty" not in result
         assert "### Has Cards" in result
 
     def test_board_with_no_columns(self):
         board = _make_board("Empty Board", [])
-        result = ExportService().export(board, [])
+        result = export(board, [])
         assert result == "## Empty Board\n"
 
     def test_board_with_all_empty_columns(self):
@@ -68,7 +68,7 @@ class TestExportAll:
                 _make_column("Col2", []),
             ],
         )
-        result = ExportService().export(board, [])
+        result = export(board, [])
         assert result == "## Board\n"
 
 
@@ -86,7 +86,7 @@ class TestExportCompleted:
                 ),
             ],
         )
-        result = ExportService().export(board, [], completed_only=True)
+        result = export(board, [], completed_only=True)
         assert "- Done task" in result
         assert "- Incomplete" not in result
 
@@ -98,13 +98,13 @@ class TestExportCompleted:
                 _make_column("Has Done", [_make_card("B", is_completed=True)]),
             ],
         )
-        result = ExportService().export(board, [], completed_only=True)
+        result = export(board, [], completed_only=True)
         assert "### All Incomplete" not in result
         assert "### Has Done" in result
 
     def test_empty_board(self):
         board = _make_board("Board", [])
-        result = ExportService().export(board, [], completed_only=True)
+        result = export(board, [], completed_only=True)
         assert result == "## Board\n"
 
     def test_no_completed_cards_anywhere(self):
@@ -114,5 +114,5 @@ class TestExportCompleted:
                 _make_column("Col", [_make_card("X", is_completed=False)]),
             ],
         )
-        result = ExportService().export(board, [], completed_only=True)
+        result = export(board, [], completed_only=True)
         assert result == "## Board\n"

@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 
 from src.database import Database
-from src.services.board_service import BoardService
 
 
 def main() -> None:
@@ -27,11 +26,10 @@ def main() -> None:
 
     db = Database(db_path=Path("sqlite.db"))
     db.init()
-    bs = BoardService(db)
 
-    error = bs.create_board(name, key)
-    if error:
-        print(f"Error: {error}", file=sys.stderr)
+    result = db.add_board(key, name)
+    if isinstance(result, str):
+        print(f"Error: {result}", file=sys.stderr)
         sys.exit(1)
 
     print(f"Board created: name='{name}' key='{key}'")
