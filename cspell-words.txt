@@ -17,6 +17,7 @@ Prio
 selectinload
 SonarCloud
 SonarQube
+sess
 startsecs
 strikethrough
 supervisorctl
