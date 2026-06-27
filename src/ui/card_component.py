@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from nicegui import ui
 
-from src.ui import _shared
 from src.ui._shared import (
     _COLOR_CARD_BG,
     _COLOR_CARD_COMPLETED_BG,
@@ -45,6 +44,7 @@ class CardComponent(ui.card):
     def __init__(  # noqa: PLR0913
         self,
         card: Card,
+        drag_state: dict[str, object | None] | None = None,
         label: Label | None = None,
         *,
         on_toggle_completed: Callable[[int, bool], None] | None = None,
@@ -62,6 +62,7 @@ class CardComponent(ui.card):
         """Initialize card component."""
         super().__init__()
         self.card_data = card
+        self._drag_state = drag_state
         self._label = label
         self._bulk_mode = bulk_mode
         self._available_labels = available_labels or []
@@ -114,7 +115,9 @@ class CardComponent(ui.card):
 
     def _apply_completed_instantly(self, *, is_completed: bool) -> None:
         """Update card appearance instantly for optimistic UI."""
-        self.card_data.date_completed = datetime.now() if is_completed else None  # noqa: DTZ005
+        self.card_data.date_completed = (
+            datetime.now(tz=UTC).replace(tzinfo=None) if is_completed else None
+        )
         # Update checkbox opacity
         if self._checkbox:
             opacity = "" if is_completed else _ICON_BTN_OPACITY
@@ -418,7 +421,9 @@ class CardComponent(ui.card):
         return dialog
 
     def _handle_dragstart(self) -> None:
-        _shared.drag_card = self
+        if self._drag_state is not None:
+            self._drag_state["drag_card"] = self
 
     def _handle_dragover(self) -> None:
-        _shared.drop_target = self
+        if self._drag_state is not None:
+            self._drag_state["drop_target"] = self
