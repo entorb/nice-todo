@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from src.models import Board, Card, Column
 from src.services.export_service import ExportService
@@ -21,7 +21,9 @@ def _make_card(title: str, *, is_completed: bool = False) -> Card:
         id=1,
         column_id=1,
         title=title,
-        date_completed=datetime.now() if is_completed else None,  # noqa: DTZ005
+        date_completed=datetime.now(tz=UTC).replace(tzinfo=None)
+        if is_completed
+        else None,
     )
 
 
