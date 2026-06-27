@@ -1,5 +1,24 @@
 """Shared constants and helpers for UI components."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.ui.card_component import CardComponent
+    from src.ui.column_component import ColumnComponent
+
+
+@dataclass
+class _DragState:
+    """Mutable drag state shared between column and card components."""
+
+    drag_card: CardComponent | None = None
+    drop_target: CardComponent | None = None
+    drag_column: ColumnComponent | None = None
+
+
 # Events
 _EVENT_KEYDOWN_ENTER = "keydown.enter.prevent"
 

@@ -12,8 +12,6 @@ from nicegui import app, ui
 
 from src.auth import setup_auth
 from src.database import Database
-from src.services.board_service import BoardService
-from src.services.export_service import ExportService
 from src.ui.board_page import create_board_page
 
 # Subpath support (e.g. https://entorb.net/nice-todo)
@@ -38,13 +36,9 @@ app.add_static_file(local_file=APPLE_ICON, url_path="/apple-touch-icon.png")
 db = Database(db_path=DB_FILE)
 db.init()
 
-board_service = BoardService(db)
-export_service = ExportService()
-
 setup_auth()
 create_board_page(
-    board_service=board_service,
-    export_service=export_service,
+    db=db,
     apple_icon_url=APPLE_ICON_URL,
 )
 
