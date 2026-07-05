@@ -362,8 +362,8 @@ class CardComponent(ui.card):
                 with (
                     ui.menu_item(
                         on_click=lambda _, cid=card.id: (
-                            self._on_move_copy(cid, "move"),
                             ctx_menu.close(),
+                            self._on_move_copy(cid, "move"),
                         ),
                     ),
                     ui.row().classes("items-center no-wrap gap-2"),
@@ -373,8 +373,8 @@ class CardComponent(ui.card):
                 with (
                     ui.menu_item(
                         on_click=lambda _, cid=card.id: (
-                            self._on_move_copy(cid, "copy"),
                             ctx_menu.close(),
+                            self._on_move_copy(cid, "copy"),
                         ),
                     ),
                     ui.row().classes("items-center no-wrap gap-2"),
