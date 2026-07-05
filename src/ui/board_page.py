@@ -389,7 +389,7 @@ class BoardPageController:
         # Load full column data for other boards so the dialog can list them
         loaded_boards: list[Board] = []
         for b in other_boards:
-            full = self._db.load_board(b.key)
+            full = self._db.get_board_by_key(b.key)
             if full and full.columns:
                 loaded_boards.append(full)
 
