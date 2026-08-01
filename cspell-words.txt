@@ -13,11 +13,12 @@ Menke
 mousedown
 mouseup
 NiceGUI
+prek
 Prio
 selectinload
+sess
 SonarCloud
 SonarQube
-sess
 startsecs
 strikethrough
 supervisorctl
