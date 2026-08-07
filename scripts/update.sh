@@ -31,5 +31,5 @@ uv run ruff format
 uv run ruff check --fix
 
 # pre-commit
-uv run pre-commit autoupdate
-uv run pre-commit run --all-files
+prek autoupdate
+prek run --all-files
