@@ -18,7 +18,7 @@ from src.ui.card_component import CardComponent
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from src.models import Column, Label
+    from src.models import Card, Column, Label
 
 
 class ColumnComponent(ui.column):
@@ -47,10 +47,13 @@ class ColumnComponent(ui.column):
         self._on_delete_column = on_delete_column
         self._on_drop_card = on_drop_card
         self._on_drop_column = on_drop_column
+        self._card_callbacks = card_callbacks or {}
+        self._bulk_mode = bulk_mode
 
         labels_map: dict[int, Label] = {}
         if labels:
             labels_map = {lb.id: lb for lb in labels if lb.id is not None}
+        self._labels_map = labels_map
 
         with self.classes("rounded-lg board-col").style(
             "min-width:280px;max-width:320px;gap:3px;"
@@ -101,13 +104,15 @@ class ColumnComponent(ui.column):
 
             # Card list
             for card in column.cards:
-                card_label = labels_map.get(card.label_id) if card.label_id else None
+                card_label = (
+                    self._labels_map.get(card.label_id) if card.label_id else None
+                )
                 CardComponent(
                     card,
                     drag_state=self._drag_state,
                     label=card_label,
-                    bulk_mode=bulk_mode,
-                    **(card_callbacks or {}),
+                    bulk_mode=self._bulk_mode,
+                    **self._card_callbacks,
                 )
 
             # Add card input
@@ -126,11 +131,26 @@ class ColumnComponent(ui.column):
                     inp, cid
                 ),
             )
+            self._add_input = add_input
 
         # Drop events
         self.on("dragover.prevent", self._highlight)
         self.on("dragleave", self._unhighlight)
         self.on("drop", self._handle_drop)
+
+    def add_card(self, card: Card) -> CardComponent:
+        """Insert a new card component before the add-card input."""
+        with self:
+            cc = CardComponent(
+                card,
+                drag_state=self._drag_state,
+                label=(self._labels_map.get(card.label_id) if card.label_id else None),
+                bulk_mode=self._bulk_mode,
+                **self._card_callbacks,
+            )
+        idx = self.default_slot.children.index(self._add_input)
+        cc.move(target_container=self, target_index=idx)
+        return cc
 
     def _handle_col_dragstart(self) -> None:
         if self._drag_state is not None:
