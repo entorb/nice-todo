@@ -3,4 +3,6 @@
 # ensure we are in the root dir
 cd "$(dirname "$0")/.."
 
-uv run python -m src.delete_board "$1"
+uv audit --preview-features audit
+
+if [ $? -ne 0 ]; then exit 1; fi

@@ -1,11 +1,11 @@
-name: Check Code and Test Python Project
+name: Check Code
 
 on:
   workflow_dispatch:
   push:
     branches: ["main"]
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches: ["main"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,28 +39,30 @@ jobs:
         uses: j178/prek-action@v3.0.0
 
       - name: Run markdownlint
-        run: npm exec markdownlint-cli2 "**/*.md"
+        run: npm exec -- markdownlint-cli2 "**/*.md"
 
       - name: Run cspell
-        run: npm exec cspell-cli --gitignore --unique --silent .
+        run: npm exec -- cspell-cli --gitignore --unique --silent .
 
       - name: Prepare
         run: |
           uv sync --frozen --no-build
 
-      - name: Run Ruff
+      - name: Run py format Ruff
         run: |
-          uv run --frozen ruff format --check
-          uv run --frozen ruff check --no-fix --output-format=github
+          uv run --frozen --no-build ruff format --check
+          uv run --frozen --no-build ruff check --no-fix --output-format=github
 
-      - name: Run pytest unittests
+      - name: Run py test Pytest
         run: |
-          uv run --frozen pytest \
+          uv run --frozen --no-build pytest \
             --cov \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml
+            --cov-report=xml:coverage.xml \
+            --quiet \
+            --tb=short
 
-      # for SonarQube coverage report
-      # - uses: SonarSource/sonarqube-scan-action@v8
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Run py dead code Vulture
+        run: uv run --frozen --no-build vulture
+
+      - name: Run py audit
+        run: uv audit --preview-features audit

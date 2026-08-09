@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # ensure we are in the root dir
-cd $(dirname $0)/..
+cd "$(dirname "$0")/.."
 
 # consistent snapshot via sqlite backup()
 # plain scp of a live WAL-mode DB would copy the main file only, missing sqlite.db-wal and risking corruption
