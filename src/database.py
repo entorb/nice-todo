@@ -9,6 +9,7 @@ import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from sqlalchemy import event
 from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
@@ -34,6 +35,15 @@ def _clean_title(title: str) -> str:
     return title
 
 
+def _set_sqlite_pragmas(dbapi_connection: object, _connection_record: object) -> None:
+    """Apply SQLite pragmas: WAL for fast commits, busy_timeout to avoid lock errors."""
+    cursor = dbapi_connection.cursor()  # type: ignore[union-attr]
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
+
+
 class Database:
     """SQLite database access using SQLModel."""
 
@@ -44,6 +54,7 @@ class Database:
             connect_args={"check_same_thread": False},
             echo=False,
         )
+        event.listen(self._engine, "connect", _set_sqlite_pragmas)
 
     def init(self) -> None:
         """Create all tables if they don't exist, and run migrations."""
