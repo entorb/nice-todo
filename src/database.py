@@ -115,7 +115,7 @@ class Database:
         if error:
             return error
         with self.session() as s:
-            board = Board(key=key_clean, name=name.strip())
+            board = Board(key=key_clean, name=name.strip(), last_login=_utcnow())
             s.add(board)
             s.commit()
             s.refresh(board)
