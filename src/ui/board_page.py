@@ -184,11 +184,6 @@ class BoardPageController:
         ui.separator()
         ui.menu_item("Manage Labels", on_click=self._on_manage_labels)
         ui.separator()
-        # ui.menu_item(
-        #     "Sort Cards by prio, label, title",
-        #     on_click=self._on_sort_cards_by_prio_label_name,
-        # )
-        # ui.menu_item("Sort Cards by date", on_click=self._on_sort_cards_by_date)
         ui.menu_item("Export", on_click=self._on_export)
         ui.menu_item("Delete Cards", on_click=self._on_delete_cards)
         ui.separator()
@@ -326,7 +321,8 @@ class BoardPageController:
         cc = self._card_components.get(card_id)
         if cc:
             cc.card_data.label_id = label_id
-            cc.sync_visuals()
+            new_label = next((lbl for lbl in self._labels if lbl.id == label_id), None)
+            cc.set_label(new_label)
 
     def _on_toggle_completed(self, card_id: int, is_completed: bool) -> None:  # noqa: FBT001
         """Save card completion (UI already updated optimistically)."""
