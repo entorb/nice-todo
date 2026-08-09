@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+import json
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src.models import utcnow
 from src.ui._shared import _COMPLETED_CUTOFF_DAYS
 
 if TYPE_CHECKING:
@@ -110,7 +112,7 @@ def rename_board_dialog(
     return dialog
 
 
-def _save_rename_board(  # noqa: PLR0913
+def _save_rename_board(  # noqa: PLR0913 PLR0917
     dialog: ui.dialog,
     name_input: ui.input,
     key_input: ui.input,
@@ -171,18 +173,19 @@ def export_scope_dialog(
 
 async def _copy_export_result(content: str, fmt: str) -> None:
     """Copy export result to clipboard based on format."""
-    escaped = content.replace("\\", "\\\\").replace("`", "\\`")
+    # json.dumps escapes the content so card titles can't inject JS
     if fmt == "html":
+        html = json.dumps(content)
         js = (
             "(async () => {"
-            "const html = `" + escaped + "`;"
+            f"const html = {html};"
             "const blob = new Blob([html], {type: 'text/html'});"
             "const item = new ClipboardItem({'text/html': blob});"
             "await navigator.clipboard.write([item]);"
             "})()"
         )
     else:
-        js = f"navigator.clipboard.writeText(`{escaped}`)"
+        js = f"navigator.clipboard.writeText({json.dumps(content)})"
     await ui.run_javascript(js)
     ui.notify("Copied to clipboard", type="positive")
 
@@ -209,9 +212,7 @@ def delete_cards_dialog(
         def _render_preview() -> None:
             preview.clear()
             scope_val: str = scope.value
-            cutoff = datetime.now(tz=UTC).replace(tzinfo=None) - timedelta(
-                days=_COMPLETED_CUTOFF_DAYS
-            )
+            cutoff = utcnow() - timedelta(days=_COMPLETED_CUTOFF_DAYS)
             board = get_board()
             with preview:
                 total = 0

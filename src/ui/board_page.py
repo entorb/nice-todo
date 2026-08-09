@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from nicegui import ui
+from nicegui import app, ui
 
 from src.services.export_service import export as _export
 from src.ui import dialogs
@@ -101,8 +101,25 @@ class BoardPageController:
     def load_and_render(self) -> None:
         """Load data and perform initial render."""
         self._reload_data()
+        self._touch_last_login_if_needed()
         with self._container:
             self._render_board()
+
+    def _touch_last_login_if_needed(self) -> None:
+        """
+        Record last_login only on first login, board create, or board switch.
+
+        Skipped for plain reloads of the same board and for card modifications
+        (which re-render via _refresh without touching last_login).
+        """
+        board = self._board
+        if board is None or board.id is None:
+            return
+        is_first_login = board.last_login is None
+        is_board_switch = app.storage.tab.get("last_board_key") != self._key
+        if is_first_login or is_board_switch:
+            self._db.touch_last_login(board.id)
+        app.storage.tab["last_board_key"] = self._key
 
     def _refresh(self) -> None:
         self._reload_data()
@@ -378,14 +395,12 @@ class BoardPageController:
 
     def _on_move_copy(self, card_id: int, action: str) -> None:
         source_col_name = self._find_card_column_name(card_id)
-        other_boards = [b for b in self._db.get_all_boards() if b.id != self._board.id]
-
-        # Load full column data for other boards so the dialog can list them
-        loaded_boards: list[Board] = []
-        for b in other_boards:
-            full = self._db.get_board_by_key(b.key)
-            if full and full.columns:
-                loaded_boards.append(full)
+        # Load boards with columns eagerly (no card trees) for the dialog
+        loaded_boards = [
+            b
+            for b in self._db.get_boards_with_columns()
+            if b.id != self._board.id and b.columns
+        ]
 
         def on_confirm(col_id: int, act: str) -> None:
             if act == "move":
@@ -471,7 +486,7 @@ class BoardPageController:
 
     def _on_delete_cards(self) -> None:
         def on_repeat(card_id: int) -> None:
-            self._db.toggle_card_repeat(card_id, is_repeat=True)
+            self._db.update_card_repeat(card_id, is_repeat=True)
             # Reload board data so the preview reflects the change
             self._reload_data()
 
@@ -623,7 +638,7 @@ def create_board_page(
     """Register the NiceGUI board page route."""
 
     @ui.page("/")
-    def board_page(key: str = "") -> None:
+    async def board_page(key: str = "") -> None:
         ui.colors(primary="#37474f", secondary="#546e7a", negative="#c62828")
         ui.add_head_html(_init_polyfill())
         ui.add_head_html(_PAGE_STYLE)
@@ -642,4 +657,5 @@ def create_board_page(
             return
 
         ctrl = BoardPageController(key, db)
+        await ui.context.client.connected()
         ctrl.load_and_render()
