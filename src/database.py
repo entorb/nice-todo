@@ -5,23 +5,19 @@ all text inputs are stripped of white spaces prior to insert/update
 """
 
 import re
-import sqlite3
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
-from src.models import Board, Card, Column, Label
+from src.models import Board, Card, Column, Label, utcnow
 from src.services.sort import card_sort_by_date, card_sort_by_prio_label_name
 
 _KEY_PATTERN = re.compile(r"^[a-zA-Z0-9._~-]+$")
-
-
-def _utcnow() -> datetime:
-    """Return current UTC time as naive datetime (safe for SQLite storage)."""
-    return datetime.now(tz=UTC).replace(tzinfo=None)
+_COLOR_PATTERN = re.compile(r"^#[0-9a-f]{6}$")
 
 
 def _clean_title(title: str) -> str:
@@ -36,16 +32,23 @@ def _clean_title(title: str) -> str:
 
 
 def _set_sqlite_pragmas(dbapi_connection: object, _connection_record: object) -> None:
-    """Apply SQLite pragmas: WAL for fast commits, busy_timeout to avoid lock errors."""
+    """Apply SQLite pragmas: WAL, busy_timeout, and foreign-key enforcement."""
     cursor = dbapi_connection.cursor()  # type: ignore[union-attr]
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
 
 class Database:
-    """SQLite database access using SQLModel."""
+    """
+    SQLite database access using SQLModel.
+
+    ponytail: all calls are synchronous and run on the NiceGUI asyncio event
+    loop — fine for single-user SQLite, but any slow query blocks every client.
+    Upgrade path: wrap heavy ops (sort, bulk delete) in run.io_bound().
+    """
 
     def __init__(self, db_path: Path) -> None:
         """Initialize database engine."""
@@ -62,23 +65,11 @@ class Database:
         self._migrate()
 
     def _migrate(self) -> None:
-        """Add missing columns to existing tables based on SQLModel metadata."""
-        db_path = str(self._engine.url).replace("sqlite:///", "")
-        with sqlite3.connect(db_path) as conn:
-            for table in SQLModel.metadata.sorted_tables:
-                existing = {
-                    row[1] for row in conn.execute(f"PRAGMA table_info({table.name})")
-                }
-                if not existing:
-                    continue
-                for col in table.columns:
-                    if col.name not in existing:
-                        col_type = col.type.compile(dialect=self._engine.dialect)
-                        conn.execute(
-                            f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type}"
-                        )
-            # Data migration: convert empty last_login strings to NULL
-            conn.execute("UPDATE board SET last_login = NULL WHERE last_login = ''")
+        """
+        Run explicit schema/data migrations on every startup.
+
+        Add future migrations here as discrete, idempotent steps.
+        """
 
     def session(self) -> Session:
         """Create a new database session."""
@@ -87,26 +78,41 @@ class Database:
     # Board
 
     def get_board_by_key(self, key: str) -> Board | None:
-        """Load board with all relationships eagerly loaded, update last_login."""
+        """Load board with all relationships eagerly loaded (read-only)."""
+        # ponytail: selectinload fetches every card on every page load; fine for
+        # personal boards, O(all cards) otherwise. Upgrade path: per-column lazy
+        # load or pagination.
         with self.session() as sess:
-            board = sess.exec(
+            return sess.exec(
                 select(Board)
                 .where(Board.key == key)
                 .options(
                     selectinload(Board.columns).selectinload(Column.cards),
                 )
             ).first()
-        if board is not None and board.id is not None:
-            with self.session() as sess:
-                if b := sess.get(Board, board.id):
-                    b.last_login = _utcnow()
-                    sess.commit()
-        return board
+
+    def touch_last_login(self, board_id: int) -> None:
+        """Record the board's last_login timestamp."""
+        with self.session() as s:
+            if board := s.get(Board, board_id):
+                board.last_login = utcnow()
+                s.commit()
 
     def get_all_boards(self) -> list[Board]:
         """Return all boards (lightweight, no relationships eagerly loaded)."""
         with self.session() as s:
             return list(s.exec(select(Board).order_by(Board.name)).all())
+
+    def get_boards_with_columns(self) -> list[Board]:
+        """Return all boards with columns eagerly loaded (no cards)."""
+        with self.session() as s:
+            return list(
+                s.exec(
+                    select(Board)
+                    .options(selectinload(Board.columns))
+                    .order_by(Board.name)
+                ).all()
+            )
 
     def validate_board_key(self, key: str, exclude_id: int | None = None) -> str | None:
         """Return error message if key is invalid, None if valid."""
@@ -114,8 +120,11 @@ class Database:
             return "Board key must not be empty"
         if not _KEY_PATTERN.match(key):
             return "Board key contains invalid characters"
-        existing = self.get_board_by_key(key)
-        if existing is not None and (exclude_id is None or existing.id != exclude_id):
+        with self.session() as s:
+            existing_id = s.exec(select(Board.id).where(Board.key == key)).first()
+        if existing_id is not None and (
+            exclude_id is None or existing_id != exclude_id
+        ):
             return "Board key must be unique"
         return None
 
@@ -125,12 +134,15 @@ class Database:
         error = self.validate_board_key(key_clean)
         if error:
             return error
-        with self.session() as s:
-            board = Board(key=key_clean, name=name.strip(), last_login=_utcnow())
-            s.add(board)
-            s.commit()
-            s.refresh(board)
-            return board
+        try:
+            with self.session() as s:
+                board = Board(key=key_clean, name=name.strip(), last_login=utcnow())
+                s.add(board)
+                s.commit()
+                s.refresh(board)
+                return board
+        except IntegrityError:
+            return "Board key must be unique"
 
     def update_board_name(self, board_id: int, name: str) -> None:
         """Rename the board."""
@@ -250,7 +262,7 @@ class Database:
         """Toggle a card's completion status via date_completed."""
         with self.session() as s:
             if card := s.get(Card, card_id):
-                card.date_completed = _utcnow() if is_completed else None
+                card.date_completed = utcnow() if is_completed else None
                 s.commit()
 
     def update_card_repeat(self, card_id: int, *, is_repeat: bool) -> None:
@@ -364,7 +376,7 @@ class Database:
         self, board_id: int, days: int
     ) -> int:
         """Delete completed non-repeat cards completed > `days` ago."""
-        cutoff = _utcnow() - timedelta(days=days)
+        cutoff = utcnow() - timedelta(days=days)
         return self._delete_cards_where(
             board_id,
             extra_conditions=[
@@ -416,18 +428,22 @@ class Database:
         """Sort cards per column: completed, prio, label name, title."""
         label_map: dict[int | None, str] = {lb.id: (lb.name or "") for lb in labels}
         key_fn = card_sort_by_prio_label_name(label_map)
-        for col in board.columns:
-            cards = sorted(col.cards, key=key_fn)
-            positions = [(c.id, idx) for idx, c in enumerate(cards)]
-            self.update_card_positions(positions)  # type: ignore[arg-type]
+        with self.session() as s:
+            for col in board.columns:
+                cards = sorted(col.cards, key=key_fn)
+                for idx, card in enumerate(cards):
+                    s.exec(update(Card).where(Card.id == card.id).values(position=idx))
+            s.commit()
 
     def sort_cards_by_date(self, board: Board) -> None:
         """Sort by date (incomplete: date_created, completed: date_completed)."""
         key_fn = card_sort_by_date()
-        for col in board.columns:
-            cards = sorted(col.cards, key=key_fn)
-            positions = [(c.id, idx) for idx, c in enumerate(cards)]
-            self.update_card_positions(positions)  # type: ignore[arg-type]
+        with self.session() as s:
+            for col in board.columns:
+                cards = sorted(col.cards, key=key_fn)
+                for idx, card in enumerate(cards):
+                    s.exec(update(Card).where(Card.id == card.id).values(position=idx))
+            s.commit()
 
     # Labels
 
@@ -437,7 +453,9 @@ class Database:
         color: str,
         exclude_label_id: int | None = None,
     ) -> str | None:
-        """Return error message if name or color is duplicate, else None."""
+        """Return error message if name or color is invalid/duplicate, else None."""
+        if not _COLOR_PATTERN.fullmatch(color):
+            return f"Invalid color format: '{color}' (expected #rrggbb)"
         labels = self.get_labels()
         for lbl in labels:
             if lbl.id == exclude_label_id:
@@ -482,12 +500,8 @@ class Database:
         return None
 
     def delete_label(self, label_id: int) -> None:
-        """Delete a label and clear it from all cards that had it."""
+        """Delete a label; cards' label_id is nulled via FK ON DELETE SET NULL."""
         with self.session() as s:
-            # Clear label_id on cards (SQLite ON DELETE SET NULL would also work,
-            # but we do it explicitly for clarity)
-            for card in s.exec(select(Card).where(Card.label_id == label_id)).all():
-                card.label_id = None
             if label := s.get(Label, label_id):
                 s.delete(label)
-            s.commit()
+                s.commit()

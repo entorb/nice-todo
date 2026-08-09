@@ -5,9 +5,14 @@ Uses Relationship() for parent-child associations with cascade deletes
 so Board.columns and Column.cards load and delete automatically.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlmodel import Field, Relationship, SQLModel
+
+
+def utcnow() -> datetime:
+    """Return current time as naive UTC datetime (safe for SQLite storage)."""
+    return datetime.now(tz=UTC).replace(tzinfo=None)
 
 
 class Label(SQLModel, table=True):
@@ -26,13 +31,26 @@ class Card(SQLModel, table=True):
     __tablename__ = "card"
 
     id: int | None = Field(default=None, primary_key=True)
-    column_id: int = Field(foreign_key="column_.id", nullable=False, index=True)
+    column_id: int = Field(
+        foreign_key="column_.id", ondelete="CASCADE", nullable=False, index=True
+    )
     title: str = Field(default="", nullable=False)
+    # ponytail: not UNIQUE(column_id, position) — the swap-based reorder writes
+    # positions one-by-one in a single txn, which a unique constraint would reject.
+    # Duplicate positions are possible after concurrent writes; order_by(position)
+    # alone is then non-deterministic. Upgrade path: deferrable unique constraint
+    # + batch position assignment (single UPDATE ... CASE).
     position: int = Field(default=0, nullable=False)
-    is_repeat: bool = Field(default=False, nullable=False)
-    label_id: int | None = Field(default=None, foreign_key="label.id", index=True)
+    is_repeat: bool = Field(
+        default=False,
+        nullable=False,
+        sa_column_kwargs={"server_default": "0"},
+    )
+    label_id: int | None = Field(
+        default=None, foreign_key="label.id", ondelete="SET NULL", index=True
+    )
     prio: bool | None = Field(default=None, nullable=True)
-    date_created: datetime = Field(default_factory=datetime.now, nullable=False)
+    date_created: datetime = Field(default_factory=utcnow, nullable=False)
     date_completed: datetime | None = Field(default=None, nullable=True)
 
     @property
@@ -47,15 +65,15 @@ class Column(SQLModel, table=True):
     __tablename__ = "column_"
 
     id: int | None = Field(default=None, primary_key=True)
-    board_id: int = Field(foreign_key="board.id", nullable=False, index=True)
+    board_id: int = Field(
+        foreign_key="board.id", ondelete="CASCADE", nullable=False, index=True
+    )
     name: str = Field(default="", nullable=False)
     position: int = Field(default=0, nullable=False)
 
     cards: list[Card] = Relationship(
-        sa_relationship_kwargs={
-            "cascade": "all, delete-orphan",
-            "order_by": "Card.position",
-        },
+        cascade_delete=True,
+        sa_relationship_kwargs={"order_by": "Card.position"},
     )
 
 
@@ -70,8 +88,6 @@ class Board(SQLModel, table=True):
     last_login: datetime | None = Field(default=None, nullable=True)
 
     columns: list[Column] = Relationship(
-        sa_relationship_kwargs={
-            "cascade": "all, delete-orphan",
-            "order_by": "Column.position",
-        },
+        cascade_delete=True,
+        sa_relationship_kwargs={"order_by": "Column.position"},
     )

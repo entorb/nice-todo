@@ -21,7 +21,7 @@ def _prio_rank(card: Card) -> int:
 
 def card_sort_by_prio_label_name(
     label_map: dict[int | None, str],
-) -> Callable:
+) -> Callable[[Card], tuple[bool, int, str, str]]:
     """Return a sort-key function for cards."""
 
     def key(c: Card) -> tuple[bool, int, str, str]:
@@ -36,7 +36,7 @@ def card_sort_by_prio_label_name(
     return key
 
 
-def card_sort_by_date() -> Callable:
+def card_sort_by_date() -> Callable[[Card], tuple[bool, str]]:
     """Sort-key: not completed by date_created ASC, completed by date_completed ASC."""
 
     def key(c: Card) -> tuple[bool, str]:

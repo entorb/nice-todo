@@ -48,4 +48,6 @@ ui.run(
     language="en-US",
     root_path=SUBPATH,
     favicon=ICON,
+    reload=False,
+    show=False,
 )
