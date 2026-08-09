@@ -98,6 +98,19 @@ class BoardPageController:
         self._drag_state = DragState()
         self._container = ui.element("div").classes("w-full")
 
+    @property
+    def _board_required(self) -> Board:
+        """Return loaded board; handlers only run on a board page."""
+        assert self._board is not None
+        return self._board
+
+    @property
+    def _board_id_required(self) -> int:
+        """Return board id; boards are always persisted after creation."""
+        board = self._board_required
+        assert board.id is not None
+        return board.id
+
     # -- lifecycle --
 
     def load_and_render(self) -> None:
@@ -184,7 +197,7 @@ class BoardPageController:
             all_boards = self._db.get_all_boards()
             self._boards_cache = all_boards
         if len(all_boards) <= 1:
-            ui.label(self._board.name).classes("text-h5").style(
+            ui.label(self._board_required.name).classes("text-h5").style(
                 "font-weight:700;color:white;letter-spacing:-0.5px;"
             )
             return
@@ -291,7 +304,7 @@ class BoardPageController:
             .style("min-height:400px;padding-bottom:16px;")
         ) as columns_row:
             self._columns_container = columns_row
-            for col in self._board.columns:
+            for col in self._board_required.columns:
                 comp = ColumnComponent(
                     col,
                     drag_state=self._drag_state,
@@ -310,20 +323,21 @@ class BoardPageController:
     # -- column handlers --
 
     def _on_add_column(self) -> None:
-        self._db.create_column(self._board.id)
+        self._db.create_column(self._board_id_required)
         self._refresh()
 
     def _on_rename_column(self, column_id: int, name: str) -> None:
-        error = self._db.update_column_name(column_id, name, self._board.id)
+        error = self._db.update_column_name(column_id, name, self._board_id_required)
         if error:
             ui.notify(error, type="warning")
             self._refresh()
 
     def _on_delete_column(self, column_id: int) -> None:
-        dialogs.confirm_dialog(
-            "Delete this column and all its cards?",
-            lambda: (self._db.delete_column(column_id), self._refresh()),
-        )
+        def do_delete() -> None:
+            self._db.delete_column(column_id)
+            self._refresh()
+
+        dialogs.confirm_dialog("Delete this column and all its cards?", do_delete)
 
     # -- card handlers --
 
@@ -382,7 +396,7 @@ class BoardPageController:
             self._refresh()
             return
         cc.delete()
-        for col in self._board.columns:
+        for col in self._board_required.columns:
             col.cards[:] = [c for c in col.cards if c.id != card_id]
 
     def _on_drop_card(
@@ -393,7 +407,7 @@ class BoardPageController:
     ) -> None:
         self._db.move_card(card_id, target_column_id, position)
         moved: Card | None = None
-        for col in self._board.columns:
+        for col in self._board_required.columns:
             for i, c in enumerate(col.cards):
                 if c.id == card_id:
                     moved = col.cards.pop(i)
@@ -405,21 +419,21 @@ class BoardPageController:
             return
         moved.column_id = target_column_id
         moved.position = position
-        for col in self._board.columns:
+        for col in self._board_required.columns:
             if col.id == target_column_id:
                 col.cards.insert(position, moved)
                 break
 
     def _on_drop_column(self, src_id: int, tgt_id: int) -> None:
-        col_ids = [c.id for c in self._board.columns]
+        col_ids = [c.id for c in self._board_required.columns if c.id is not None]
         if src_id in col_ids and tgt_id in col_ids:
             col_ids.remove(src_id)
             tgt_idx = col_ids.index(tgt_id)
             col_ids.insert(tgt_idx, src_id)
             positions = [(cid, idx) for idx, cid in enumerate(col_ids)]
             self._db.update_column_positions(positions)
-            by_id = {c.id: c for c in self._board.columns}
-            self._board.columns[:] = [by_id[cid] for cid in col_ids]
+            by_id = {c.id: c for c in self._board_required.columns}
+            self._board_required.columns[:] = [by_id[cid] for cid in col_ids]
             for idx, cid in enumerate(col_ids):
                 col_comp = self._column_components.get(cid)
                 if col_comp is not None:
@@ -449,7 +463,7 @@ class BoardPageController:
         loaded_boards = [
             b
             for b in self._db.get_boards_with_columns()
-            if b.id != self._board.id and b.columns
+            if b.id != self._board_id_required and b.columns
         ]
 
         def on_confirm(col_id: int, act: str) -> None:
@@ -464,13 +478,13 @@ class BoardPageController:
         dialogs.move_copy_dialog(
             action,
             loaded_boards,
-            self._board,
+            self._board_required,
             source_col_name,
             on_confirm,
         )
 
     def _find_card_column_name(self, card_id: int) -> str | None:
-        for col in self._board.columns:
+        for col in self._board_required.columns:
             for c in col.cards:
                 if c.id == card_id:
                     return col.name
@@ -513,11 +527,11 @@ class BoardPageController:
     # -- board-level handlers --
 
     def _on_sort_cards_by_prio_label_name(self) -> None:
-        self._db.sort_cards_by_prio_label_name(self._board, self._labels)
+        self._db.sort_cards_by_prio_label_name(self._board_required, self._labels)
         self._refresh()
 
     def _on_sort_cards_by_date(self) -> None:
-        self._db.sort_cards_by_date(self._board)
+        self._db.sort_cards_by_date(self._board_required)
         self._refresh()
 
     def _on_export(self) -> None:
@@ -542,16 +556,16 @@ class BoardPageController:
 
         def on_delete(mode: str) -> None:
             if mode == "all":
-                self._db.delete_all_non_repeat_cards(self._board.id)
+                self._db.delete_all_non_repeat_cards(self._board_id_required)
             elif mode == "2w":
                 self._db.delete_completed_non_repeat_cards_older_than(
-                    self._board.id, days=COMPLETED_CUTOFF_DAYS
+                    self._board_id_required, days=COMPLETED_CUTOFF_DAYS
                 )
             else:
-                self._db.delete_completed_non_repeat_cards(self._board.id)
+                self._db.delete_completed_non_repeat_cards(self._board_id_required)
             self._refresh()
 
-        dialogs.delete_cards_dialog(lambda: self._board, on_repeat, on_delete)
+        dialogs.delete_cards_dialog(lambda: self._board_required, on_repeat, on_delete)
 
     def _on_manage_labels(self) -> None:
         """Open label management dialog."""
@@ -573,6 +587,8 @@ class BoardPageController:
         with ui.dialog() as dlg, ui.card().classes("p-4 min-w-[350px]"):
             ui.label("Manage Labels").classes("text-h6")
             for lbl in self._labels:
+                if lbl.id is None:
+                    continue
                 with ui.row().classes("items-center w-full gap-2"):
                     ui.html(
                         '<span style="display:inline-block;width:16px;height:16px;'
@@ -616,19 +632,19 @@ class BoardPageController:
             name = self._validate_board_name(new_name)
             if name is None:
                 return
-            key_error = self._db.update_board_key(self._board.id, new_key)
+            key_error = self._db.update_board_key(self._board_id_required, new_key)
             if key_error:
                 ui.notify(key_error, type="warning")
                 return
-            self._db.update_board_name(self._board.id, name)
+            self._db.update_board_name(self._board_id_required, name)
             ui.navigate.to(f"/?key={new_key}")
 
         def validate_key(key: str) -> str | None:
-            return self._db.validate_board_key(key, exclude_id=self._board.id)
+            return self._db.validate_board_key(key, exclude_id=self._board_id_required)
 
         dialogs.rename_board_dialog(
-            self._board.name,
-            self._board.key,
+            self._board_required.name,
+            self._board_required.key,
             on_save,
             validate_key,
         )
@@ -643,10 +659,10 @@ class BoardPageController:
 
     def _on_new_board(self) -> None:
         def on_save(name: str, new_key: str) -> None:
-            name = self._validate_board_name(name)
-            if name is None:
+            clean_name = self._validate_board_name(name)
+            if clean_name is None:
                 return
-            board = self._db.add_board(new_key, name)
+            board = self._db.add_board(new_key, clean_name)
             if isinstance(board, str):
                 ui.notify(board, type="warning")
                 return
