@@ -5,13 +5,14 @@ all text inputs are stripped of white spaces prior to insert/update
 """
 
 import re
+from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
 
-from sqlalchemy import event
+from sqlalchemy import case, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
-from sqlmodel import Session, SQLModel, create_engine, select, update
+from sqlmodel import Session, SQLModel, create_engine, delete, select, update
 
 from src.models import Board, Card, Column, Label, utcnow
 from src.services.sort import card_sort_by_date, card_sort_by_prio_label_name
@@ -349,9 +350,8 @@ class Database:
             if extra_conditions:
                 conditions.extend(extra_conditions)
 
-            cards = s.exec(select(Card).where(*conditions)).all()
-            for card in cards:
-                s.delete(card)
+            result = s.exec(delete(Card).where(*conditions))
+            count = result.rowcount or 0
 
             if reset_repeats:
                 s.exec(
@@ -362,7 +362,7 @@ class Database:
                 )
 
             s.commit()
-            return len(cards)
+            return count
 
     def delete_completed_non_repeat_cards(self, board_id: int) -> int:
         """Delete completed non-repeat cards and unset date_completed on repeats."""
@@ -424,25 +424,41 @@ class Database:
 
     # Sorting
 
+    def _apply_sorted_positions(
+        self,
+        s: Session,
+        board: Board,
+        key_fn: Callable[[Card], tuple[object, ...]],
+    ) -> None:
+        """Write per-column positions for sorted cards in one UPDATE...CASE each."""
+        for col in board.columns:
+            cards = sorted(col.cards, key=key_fn)
+            if not cards:
+                continue
+            whens = [
+                (Card.id == c.id, idx)
+                for idx, c in enumerate(cards)
+                if c.id is not None
+            ]
+            s.exec(
+                update(Card)
+                .where(Card.column_id == col.id)
+                .values(position=case(*whens, else_=Card.position))
+            )
+
     def sort_cards_by_prio_label_name(self, board: Board, labels: list[Label]) -> None:
         """Sort cards per column: completed, prio, label name, title."""
         label_map: dict[int | None, str] = {lb.id: (lb.name or "") for lb in labels}
         key_fn = card_sort_by_prio_label_name(label_map)
         with self.session() as s:
-            for col in board.columns:
-                cards = sorted(col.cards, key=key_fn)
-                for idx, card in enumerate(cards):
-                    s.exec(update(Card).where(Card.id == card.id).values(position=idx))
+            self._apply_sorted_positions(s, board, key_fn)
             s.commit()
 
     def sort_cards_by_date(self, board: Board) -> None:
         """Sort by date (incomplete: date_created, completed: date_completed)."""
         key_fn = card_sort_by_date()
         with self.session() as s:
-            for col in board.columns:
-                cards = sorted(col.cards, key=key_fn)
-                for idx, card in enumerate(cards):
-                    s.exec(update(Card).where(Card.id == card.id).values(position=idx))
+            self._apply_sorted_positions(s, board, key_fn)
             s.commit()
 
     # Labels
