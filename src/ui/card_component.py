@@ -121,11 +121,13 @@ class CardComponent(ui.card):
         )
         # Update checkbox opacity
         if self._checkbox:
-            opacity = "" if is_completed else _ICON_BTN_OPACITY
-            self._checkbox.style(opacity)
+            if is_completed:
+                self._checkbox.style(replace="opacity:1;")
+            else:
+                self._checkbox.style(replace=_ICON_BTN_OPACITY)
         # Update card style
         new_style = self._compute_style(self.card_data, self._label)
-        self.style(new_style)
+        self.style(replace=new_style)
 
     def _build_content(self, card: Card, available_labels: list[Label] | None) -> None:
         """Build the card's inner row content."""
