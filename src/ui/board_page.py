@@ -178,19 +178,17 @@ class BoardPageController:
         ).tooltip("Switch board")
 
     def _render_menu(self) -> None:
-        ui.menu_item("Add Column", on_click=self._on_add_column)
-        ui.separator()
-        ui.menu_item("Bulk Edit Mode", on_click=self._on_toggle_bulk)
         ui.menu_item("Rename Board", on_click=self._on_rename_board)
         ui.menu_item("New Board", on_click=self._on_new_board)
+        ui.menu_item("Add Column", on_click=self._on_add_column)
         ui.separator()
         ui.menu_item("Manage Labels", on_click=self._on_manage_labels)
         ui.separator()
-        ui.menu_item(
-            "Sort Cards by prio, label, title",
-            on_click=self._on_sort_cards_by_prio_label_name,
-        )
-        ui.menu_item("Sort Cards by date", on_click=self._on_sort_cards_by_date)
+        # ui.menu_item(
+        #     "Sort Cards by prio, label, title",
+        #     on_click=self._on_sort_cards_by_prio_label_name,
+        # )
+        # ui.menu_item("Sort Cards by date", on_click=self._on_sort_cards_by_date)
         ui.menu_item("Export", on_click=self._on_export)
         ui.menu_item("Delete Cards", on_click=self._on_delete_cards)
         ui.separator()
@@ -587,11 +585,11 @@ class BoardPageController:
             name = self._validate_board_name(name)
             if name is None:
                 return
-            error = self._db.add_board(new_key, name)
-            if error:
-                ui.notify(error, type="warning")
+            board = self._db.add_board(new_key, name)
+            if isinstance(board, str):
+                ui.notify(board, type="warning")
                 return
-            ui.navigate.to(f"/?key={new_key}")
+            ui.navigate.to(f"/?key={board.key}")
 
         dialogs.rename_board_dialog(
             "",
