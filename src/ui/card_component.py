@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src.models import utcnow
 from src.ui._shared import (
     _COLOR_CARD_BG,
     _COLOR_CARD_COMPLETED_BG,
@@ -122,9 +122,7 @@ class CardComponent(ui.card):
 
     def _apply_completed_instantly(self, *, is_completed: bool) -> None:
         """Update card appearance instantly for optimistic UI."""
-        self.card_data.date_completed = (
-            datetime.now(tz=UTC).replace(tzinfo=None) if is_completed else None
-        )
+        self.card_data.date_completed = utcnow() if is_completed else None
         # Update checkbox opacity
         if self._checkbox:
             if is_completed:

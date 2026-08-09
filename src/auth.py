@@ -32,20 +32,20 @@ def _is_valid_token(token: str) -> bool:
 
 
 def _is_public(path: str) -> bool:
-    """Paths that must be accessible without auth."""
-    login_prefix = f"{_SUBPATH}{_LOGIN_ROUTE}"
-    logout_prefix = f"{_SUBPATH}{_LOGOUT_ROUTE}"
-    nicegui_prefix = f"{_SUBPATH}/_nicegui/"
-    socketio_prefix = f"{_SUBPATH}/socket.io/"
+    """Paths that must be accessible without auth (exact prefix match)."""
     public_prefixes = (
-        login_prefix,
-        logout_prefix,
-        nicegui_prefix,
-        socketio_prefix,
-        "/_nicegui/",
-        "/socket.io/",
+        f"{_SUBPATH}{_LOGIN_ROUTE}",
+        f"{_SUBPATH}{_LOGOUT_ROUTE}",
+        f"{_SUBPATH}/_nicegui",
+        f"{_SUBPATH}/socket.io",
+        f"{_SUBPATH}/apple-touch-icon.png",
+        "/_nicegui",
+        "/socket.io",
+        "/apple-touch-icon.png",
     )
-    return any(path.startswith(p) for p in public_prefixes)
+    return any(
+        path == prefix or path.startswith(prefix + "/") for prefix in public_prefixes
+    )
 
 
 def _register_middleware(login_url: str) -> None:
@@ -74,19 +74,23 @@ def _register_login_post(login_url: str, home_url: str) -> None:
     """Register the POST endpoint that sets the auth cookie server-side."""
 
     @app.post(_LOGIN_POST_ROUTE)
-    async def _login_submit(key: str = Form()) -> Response:
+    async def _login_submit(request: Request, key: str = Form()) -> Response:
         """Validate the key and set an auth cookie."""
         if not hmac.compare_digest(key, API_KEY):
             return RedirectResponse(f"{login_url}?error=1", status_code=303)
         response = RedirectResponse(home_url, status_code=303)
+        # Scope cookie to the subpath (or "/" when none) so it doesn't leak to
+        # other apps on the same host; trust X-Forwarded-Proto from reverse proxy.
+        cookie_path = f"{_SUBPATH}/" if _SUBPATH else "/"
+        proto = request.headers.get("x-forwarded-proto", request.url.scheme)
         response.set_cookie(
             COOKIE_NAME,
             _make_token(API_KEY),
             max_age=COOKIE_MAX_AGE,
             httponly=True,
-            secure=True,
+            secure=proto == "https",
             samesite="strict",
-            path="/",
+            path=cookie_path,
         )
         return response
 
@@ -98,9 +102,10 @@ def _register_logout(login_url: str) -> None:
     async def _logout() -> Response:
         """Delete the auth cookie and redirect to login."""
         response = RedirectResponse(login_url, status_code=303)
+        cookie_path = f"{_SUBPATH}/" if _SUBPATH else "/"
         response.delete_cookie(
             COOKIE_NAME,
-            path="/",
+            path=cookie_path,
         )
         return response
 

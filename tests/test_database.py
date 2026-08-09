@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import delete
 
 from src.models import Board, Card, Column, Label
 
@@ -40,6 +41,24 @@ class TestBoard:
     def test_add_board_empty_key(self, db):
         result = db.add_board("", "Empty")
         assert result == "Board key must not be empty"
+
+    def test_add_board_race_unique_violation(self, db, monkeypatch):
+        """Concurrent same-key insert is caught via the IntegrityError backstop."""
+        db.add_board("same", "One")
+        monkeypatch.setattr(
+            db, "validate_board_key", lambda _key, _exclude_id=None: None
+        )
+        result = db.add_board("same", "Two")
+        assert result == "Board key must be unique"
+
+    def test_get_boards_with_columns(self, db):
+        board = _new_board(db)
+        db.create_column(board.id)
+        boards = db.get_boards_with_columns()
+        assert len(boards) == 1
+        assert [c.id for c in boards[0].columns] == [
+            c.id for c in db.get_columns(board.id)
+        ]
 
     def test_rename_board(self, db):
         board = _new_board(db)
@@ -390,6 +409,16 @@ class TestLabel:
         error = db.update_label(b.id, "B", "#ff0000")
         assert error == "Label color '#ff0000' already in use"
 
+    def test_create_label_invalid_color(self, db):
+        result = db.create_label("Bad", "#zzzzzz")
+        assert result == "Invalid color format: '#zzzzzz' (expected #rrggbb)"
+
+    def test_update_label_invalid_color(self, db):
+        label = db.create_label("OK", "#ff0000")
+        assert isinstance(label, Label)
+        error = db.update_label(label.id, "OK", "red")
+        assert error == "Invalid color format: 'red' (expected #rrggbb)"
+
     def test_delete_label_clears_cards(self, db):
         board = _new_board(db)
         col = db.create_column(board.id)
@@ -400,3 +429,35 @@ class TestLabel:
         db.delete_label(label.id)
         assert db.get_labels() == []
         assert db.get_cards(col.id)[0].label_id is None
+
+
+class TestForeignKeyCascade:
+    """DB-level ON DELETE CASCADE (raw DELETE bypasses the ORM cascade)."""
+
+    def test_raw_delete_column_cascades_cards(self, db):
+        board = _new_board(db)
+        col = db.create_column(board.id)
+        db.create_card(col.id, "Card", 0)
+        with db.session() as s:
+            s.exec(delete(Column).where(Column.id == col.id))
+            s.commit()
+        assert db.get_cards(col.id) == []
+
+    def test_raw_delete_board_cascades_columns_and_cards(self, db):
+        board = _new_board(db)
+        col = db.create_column(board.id)
+        db.create_card(col.id, "Card", 0)
+        with db.session() as s:
+            s.exec(delete(Board).where(Board.id == board.id))
+            s.commit()
+        assert db.get_columns(board.id) == []
+        assert db.get_cards(col.id) == []
+
+    def test_raw_delete_card_keeps_rest(self, db):
+        board = _new_board(db)
+        col = db.create_column(board.id)
+        card = db.create_card(col.id, "Card", 0)
+        with db.session() as s:
+            s.exec(delete(Card).where(Card.id == card.id))
+            s.commit()
+        assert db.get_cards(col.id) == []
