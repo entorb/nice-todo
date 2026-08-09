@@ -19,7 +19,7 @@ from src.ui.column_component import ColumnComponent
 
 if TYPE_CHECKING:
     from src.database import Database
-    from src.models import Board, Label
+    from src.models import Board, Card, Label
     from src.ui.card_component import CardComponent
 
 
@@ -93,6 +93,8 @@ class BoardPageController:
         self._bulk_active = False
         self._bulk_selected: set[int] = set()
         self._card_components: dict[int, CardComponent] = {}
+        self._column_components: dict[int, ColumnComponent] = {}
+        self._boards_cache: list[Board] | None = None
         self._drag_state = _DragState()
         self._container = ui.element("div").classes("w-full")
 
@@ -177,7 +179,10 @@ class BoardPageController:
 
     def _render_board_switcher(self) -> None:
         """Render a dropdown to quickly switch between boards."""
-        all_boards = self._db.get_all_boards()
+        all_boards = self._boards_cache
+        if all_boards is None:
+            all_boards = self._db.get_all_boards()
+            self._boards_cache = all_boards
         if len(all_boards) <= 1:
             ui.label(self._board.name).classes("text-h5").style(
                 "font-weight:700;color:white;letter-spacing:-0.5px;"
@@ -267,6 +272,7 @@ class BoardPageController:
 
     def _render_columns(self) -> None:
         self._card_components = {}
+        self._column_components = {}
         cbs = {
             "on_toggle_completed": self._on_toggle_completed,
             "on_toggle_repeat": self._on_toggle_repeat,
@@ -283,9 +289,10 @@ class BoardPageController:
             ui.row()
             .classes("items-start gap-3 flex-nowrap overflow-x-auto board-columns")
             .style("min-height:400px;padding-bottom:16px;")
-        ):
+        ) as columns_row:
+            self._columns_container = columns_row
             for col in self._board.columns:
-                ColumnComponent(
+                comp = ColumnComponent(
                     col,
                     drag_state=self._drag_state,
                     labels=self._labels,
@@ -297,6 +304,8 @@ class BoardPageController:
                     card_callbacks=cbs,
                     bulk_mode=self._bulk_active,
                 )
+                if col.id is not None:
+                    self._column_components[col.id] = comp
 
     # -- column handlers --
 
@@ -319,9 +328,16 @@ class BoardPageController:
     # -- card handlers --
 
     def _on_add_card(self, column_id: int, title: str) -> None:
-        pos = len(self._db.get_cards(column_id))
-        self._db.create_card(column_id, title, pos)
-        self._refresh()
+        col_comp = self._column_components.get(column_id)
+        if col_comp is None:
+            pos = len(self._db.get_cards(column_id))
+            self._db.create_card(column_id, title, pos)
+            self._refresh()
+        else:
+            pos = len(col_comp.column_data.cards)
+            card = self._db.create_card(column_id, title, pos)
+            col_comp.column_data.cards.append(card)
+            col_comp.add_card(card)
         ui.run_javascript(
             f"""setTimeout(function() {{
                 var q = '.add-card-input-col-{column_id} input';
@@ -361,7 +377,13 @@ class BoardPageController:
 
     def _on_delete_card(self, card_id: int) -> None:
         self._db.delete_card(card_id)
-        self._refresh()
+        cc = self._card_components.pop(card_id, None)
+        if cc is None:
+            self._refresh()
+            return
+        cc.delete()
+        for col in self._board.columns:
+            col.cards[:] = [c for c in col.cards if c.id != card_id]
 
     def _on_drop_card(
         self,
@@ -370,16 +392,44 @@ class BoardPageController:
         position: int,
     ) -> None:
         self._db.move_card(card_id, target_column_id, position)
-        self._refresh()
+        moved: Card | None = None
+        for col in self._board.columns:
+            for i, c in enumerate(col.cards):
+                if c.id == card_id:
+                    moved = col.cards.pop(i)
+                    break
+            if moved is not None:
+                break
+        if moved is None:
+            self._refresh()
+            return
+        moved.column_id = target_column_id
+        moved.position = position
+        for col in self._board.columns:
+            if col.id == target_column_id:
+                col.cards.insert(position, moved)
+                break
 
     def _on_drop_column(self, src_id: int, tgt_id: int) -> None:
         col_ids = [c.id for c in self._board.columns]
         if src_id in col_ids and tgt_id in col_ids:
             col_ids.remove(src_id)
-            col_ids.insert(col_ids.index(tgt_id), src_id)
+            tgt_idx = col_ids.index(tgt_id)
+            col_ids.insert(tgt_idx, src_id)
             positions = [(cid, idx) for idx, cid in enumerate(col_ids)]
             self._db.update_column_positions(positions)
-            self._refresh()
+            by_id = {c.id: c for c in self._board.columns}
+            self._board.columns[:] = [by_id[cid] for cid in col_ids]
+            for idx, cid in enumerate(col_ids):
+                col_comp = self._column_components.get(cid)
+                if col_comp is not None:
+                    col_comp.column_data.position = idx
+            src_comp = self._column_components.get(src_id)
+            if src_comp is not None and self._columns_container is not None:
+                src_comp.move(
+                    target_container=self._columns_container,
+                    target_index=tgt_idx,
+                )
 
     def _on_card_mount(self, card_id: int, component: CardComponent) -> None:
         """Register a card component for targeted visual updates."""
