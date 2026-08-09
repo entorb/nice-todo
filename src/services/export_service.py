@@ -17,7 +17,7 @@ def _prepare_export_data(
     *,
     completed_only: bool,
 ) -> tuple[dict[int | None, str], list[tuple[str, list[Card]]]]:
-    label_map = {lb.id: lb.name for lb in labels if lb.id is not None}
+    label_map = {lb.id: lb.name for lb in labels}
     key_fn = card_sort_by_prio_label_name(label_map)
     columns = []
     for col in board.columns:

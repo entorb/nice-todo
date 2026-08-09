@@ -173,8 +173,8 @@ class ColumnComponent(ui.column):
         if dragged_col is not None and dragged_col is not self:
             if self._on_drop_column:
                 self._on_drop_column(
-                    dragged_col.column_data.id,
-                    self.column_data.id,
+                    dragged_col.column_data.id,  # type: ignore[arg-type]
+                    self.column_data.id,  # type: ignore[arg-type]
                 )
             ds.drag_column = None
             return
@@ -198,8 +198,8 @@ class ColumnComponent(ui.column):
 
         if self._on_drop_card:
             self._on_drop_card(
-                dc.card_data.id,
-                self.column_data.id,
+                dc.card_data.id,  # type: ignore[arg-type]
+                self.column_data.id,  # type: ignore[arg-type]
                 target_index,
             )
 
