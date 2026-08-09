@@ -4,4 +4,6 @@ __pycache__/
 .env
 requirements.txt
 sqlite.db
+sqlite.db-shm
+sqlite.db-wal
 .coverage
