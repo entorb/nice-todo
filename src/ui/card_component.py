@@ -78,10 +78,10 @@ class CardComponent(ui.card):
         self._on_move_copy = on_move_copy
 
         style = self._compute_style(card, label)
-        text_color = _contrast_color(label.color) if label else _COLOR_TEXT_DARK
-        color_class = "card-dark" if text_color == _COLOR_TEXT_DARK else "card-light"
 
-        with self.classes(f"w-full cursor-pointer {color_class}").style(style):
+        with self.classes(f"w-full cursor-pointer {self._color_class(label)}").style(
+            style
+        ):
             self._build_content(card, available_labels)
 
         # Drag events
@@ -91,6 +91,12 @@ class CardComponent(ui.card):
 
         if on_mount:
             on_mount(card.id if card.id is not None else 0, self)
+
+    @staticmethod
+    def _color_class(label: Label | None) -> str:
+        """Return the contrast CSS class (card-dark/card-light) for a label."""
+        text_color = _contrast_color(label.color) if label else _COLOR_TEXT_DARK
+        return "card-dark" if text_color == _COLOR_TEXT_DARK else "card-light"
 
     @staticmethod
     def _compute_style(card: Card, label: Label | None) -> str:
@@ -142,9 +148,15 @@ class CardComponent(ui.card):
         """Rebuild card inner content and style from current card_data."""
         self.clear()
         new_style = self._compute_style(self.card_data, self._label)
-        self.style(new_style)
+        self.classes(replace=f"w-full cursor-pointer {self._color_class(self._label)}")
+        self.style(replace=new_style)
         with self:
             self._build_content(self.card_data, self._available_labels)
+
+    def set_label(self, label: Label | None) -> None:
+        """Update the card's label and rebuild its visuals."""
+        self._label = label
+        self.sync_visuals()
 
     def _build_drag_handle(self) -> None:
         """Build the drag-handle icon."""
