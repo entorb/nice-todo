@@ -1,9 +1,11 @@
 __pycache__/
 
+.coverage
+.cspellcache
 .DS_Store
 .env
+cspell-words-missing.txt
 requirements.txt
 sqlite.db
 sqlite.db-shm
 sqlite.db-wal
-.coverage

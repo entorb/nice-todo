@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class _DragState:
+class DragState:
     """Mutable drag state shared between column and card components."""
 
     drag_card: CardComponent | None = None
@@ -20,37 +20,37 @@ class _DragState:
 
 
 # Events
-_EVENT_KEYDOWN_ENTER = "keydown.enter.prevent"
+EVENT_KEYDOWN_ENTER = "keydown.enter.prevent"
 
 # Icon button styling
-_ICON_BTN_OPACITY = "opacity:0.6;"
-_ICON_BTN_PROPS = "flat dense round size=xs"
+ICON_BTN_OPACITY = "opacity:0.6;"
+ICON_BTN_PROPS = "flat dense round size=xs"
 
 # Thresholds
-_LUMINANCE_THRESHOLD = 0.45
+LUMINANCE_THRESHOLD = 0.45
 
 # Opacity
-_OPACITY_COLUMN_DELETE = "opacity:0.5;"
-_OPACITY_COMPLETED_LABELED = "opacity:0.45;"
-_OPACITY_COMPLETED_PLAIN = "opacity:0.5;"
+OPACITY_COLUMN_DELETE = "opacity:0.5;"
+OPACITY_COMPLETED_LABELED = "opacity:0.45;"
+OPACITY_COMPLETED_PLAIN = "opacity:0.5;"
 
 # Colors
-_COLOR_CARD_BG = "white"
-_COLOR_CARD_COMPLETED_BG = "#f5f5f5"
-_COLOR_COLUMN_BG = "#eceff1"
-_COLOR_COLUMN_HIGHLIGHT = "#cfd8dc"
-_COLOR_TEXT_DARK = "#222"
-_COLOR_TEXT_LIGHT = "#fff"
+COLOR_CARD_BG = "white"
+COLOR_CARD_COMPLETED_BG = "#f5f5f5"
+COLOR_COLUMN_BG = "#eceff1"
+COLOR_COLUMN_HIGHLIGHT = "#cfd8dc"
+COLOR_TEXT_DARK = "#222"
+COLOR_TEXT_LIGHT = "#fff"
 
 
-def _contrast_color(hex_color: str) -> str:
+def contrast_color(hex_color: str) -> str:
     """Return black or white text color based on background luminance."""
     hex_color = hex_color.lstrip("#")
     if len(hex_color) == 3:  # noqa: PLR2004
         hex_color = "".join(c * 2 for c in hex_color)
     r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
     luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    return _COLOR_TEXT_DARK if luminance > _LUMINANCE_THRESHOLD else _COLOR_TEXT_LIGHT
+    return COLOR_TEXT_DARK if luminance > LUMINANCE_THRESHOLD else COLOR_TEXT_LIGHT
 
 
 # -- Prio icons & labels (used by card context menu and bulk bar) --
@@ -69,7 +69,7 @@ REPEAT_ICON_UNSET = "remove_circle_outline"
 LABEL_ICON_REMOVE = "label_off"
 
 # -- Completed card cutoff --
-_COMPLETED_CUTOFF_DAYS = 14
+COMPLETED_CUTOFF_DAYS = 14
 
 
 PRIO_CHOICES: list[tuple[bool | None, str, str]] = [

@@ -37,6 +37,7 @@ extend-ignore = [
     "INP001",  # implicit-namespace-package
     "PLR2004", # magic value used in comparison (test assertions)
     "S101",    # Allow asserts in tests
+    "SLF001",  # Allow white-box access to private auth helpers
 ]
 
 [format]
