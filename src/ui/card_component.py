@@ -240,7 +240,7 @@ class CardComponent(ui.card):
         ) -> None:
             if self._on_edit_title and inp.value:
                 self._on_edit_title(cid, inp.value)  # type: ignore[arg-type]
-            self.card_data.title = inp.value
+            self.card_data.title = inp.value or ""
             self._refresh_title_content()
 
         title_input.on(EVENT_KEYDOWN_ENTER, on_commit)
@@ -282,7 +282,8 @@ class CardComponent(ui.card):
                 icon=REPEAT_ICON_SET,
                 on_click=lambda _, cid=card.id: (
                     self._on_toggle_repeat(  # type: ignore[misc]
-                        cid, not card.is_repeat
+                        cid,  # type: ignore[arg-type]
+                        not card.is_repeat,
                     )
                     if self._on_toggle_repeat
                     else None
@@ -373,7 +374,7 @@ class CardComponent(ui.card):
                     ui.menu_item(
                         on_click=lambda _, cid=card.id: (
                             ctx_menu.close(),
-                            self._on_move_copy(cid, "move"),
+                            self._on_move_copy(cid, "move"),  # type: ignore[misc, arg-type]
                         ),
                     ),
                     ui.row().classes("items-center no-wrap gap-2"),
@@ -384,7 +385,7 @@ class CardComponent(ui.card):
                     ui.menu_item(
                         on_click=lambda _, cid=card.id: (
                             ctx_menu.close(),
-                            self._on_move_copy(cid, "copy"),
+                            self._on_move_copy(cid, "copy"),  # type: ignore[misc, arg-type]
                         ),
                     ),
                     ui.row().classes("items-center no-wrap gap-2"),

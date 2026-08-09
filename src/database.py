@@ -88,7 +88,7 @@ class Database:
                 select(Board)
                 .where(Board.key == key)
                 .options(
-                    selectinload(Board.columns).selectinload(Column.cards),
+                    selectinload(Board.columns).selectinload(Column.cards)  # type: ignore[arg-type]  # type: ignore[arg-type]
                 )
             ).first()
 
@@ -110,7 +110,7 @@ class Database:
             return list(
                 s.exec(
                     select(Board)
-                    .options(selectinload(Board.columns))
+                    .options(selectinload(Board.columns))  # type: ignore[arg-type]
                     .order_by(Board.name)
                 ).all()
             )
@@ -180,7 +180,7 @@ class Database:
                 s.exec(
                     select(Column)
                     .where(Column.board_id == board_id)
-                    .order_by(Column.position)
+                    .order_by(Column.position)  # type: ignore[arg-type]
                 ).all()
             )
 
@@ -219,7 +219,7 @@ class Database:
         """Batch-update column positions."""
         with self.session() as s:
             for col_id, pos in positions:
-                s.exec(update(Column).where(Column.id == col_id).values(position=pos))
+                s.exec(update(Column).where(Column.id == col_id).values(position=pos))  # type: ignore[arg-type]
             s.commit()
 
     def delete_column(self, column_id: int) -> None:
@@ -238,7 +238,7 @@ class Database:
                 s.exec(
                     select(Card)
                     .where(Card.column_id == column_id)
-                    .order_by(Card.position)
+                    .order_by(Card.position)  # type: ignore[arg-type]
                 ).all()
             )
 
@@ -339,7 +339,7 @@ class Database:
                 return 0
 
             conditions = [Card.column_id.in_(col_ids)]  # type: ignore[union-attr]
-            conditions.append(Card.is_repeat.is_(False))
+            conditions.append(Card.is_repeat.is_(False))  # type: ignore[union-attr]
             if extra_conditions:
                 conditions.extend(extra_conditions)
 
@@ -350,7 +350,7 @@ class Database:
                 s.exec(
                     update(Card)
                     .where(Card.column_id.in_(col_ids))  # type: ignore[union-attr]
-                    .where(Card.is_repeat.is_(True))
+                    .where(Card.is_repeat.is_(True))  # type: ignore[union-attr]
                     .values(date_completed=None),
                 )
 
@@ -435,8 +435,8 @@ class Database:
             ]
             s.exec(
                 update(Card)
-                .where(Card.column_id == col.id)
-                .values(position=case(*whens, else_=Card.position))
+                .where(Card.column_id == col.id)  # type: ignore[arg-type]
+                .values(position=case(*whens, else_=Card.position))  # type: ignore[arg-type]
             )
 
     def sort_cards_by_prio_label_name(self, board: Board, labels: list[Label]) -> None:

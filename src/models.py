@@ -18,7 +18,7 @@ def utcnow() -> datetime:
 class Label(SQLModel, table=True):
     """A global tag with name and color, shared across all boards."""
 
-    __tablename__ = "label"
+    __tablename__ = "label"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(default="", nullable=False)
@@ -28,7 +28,7 @@ class Label(SQLModel, table=True):
 class Card(SQLModel, table=True):
     """A task item within a column."""
 
-    __tablename__ = "card"
+    __tablename__ = "card"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True)
     column_id: int = Field(
@@ -62,7 +62,7 @@ class Card(SQLModel, table=True):
 class Column(SQLModel, table=True):
     """A named vertical list within a board."""
 
-    __tablename__ = "column_"
+    __tablename__ = "column_"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True)
     board_id: int = Field(
@@ -80,7 +80,7 @@ class Column(SQLModel, table=True):
 class Board(SQLModel, table=True):
     """The top-level entity containing columns and labels."""
 
-    __tablename__ = "board"
+    __tablename__ = "board"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True)
     key: str = Field(unique=True, nullable=False, default="", index=True)

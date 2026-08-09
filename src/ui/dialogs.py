@@ -249,7 +249,7 @@ def delete_cards_dialog(
                             ui.button(
                                 icon="repeat",
                                 on_click=lambda _, cid=card.id: (
-                                    on_repeat(cid),
+                                    on_repeat(cid),  # type: ignore[arg-type]
                                     _render_preview(),
                                 ),
                             ).props("flat dense round size=xs").tooltip(
