@@ -295,13 +295,6 @@ class Database:
                 card.position = position
                 s.commit()
 
-    def update_card_positions(self, positions: list[tuple[int, int]]) -> None:
-        """Batch-update card positions."""
-        with self.session() as s:
-            for card_id, pos in positions:
-                s.exec(update(Card).where(Card.id == card_id).values(position=pos))
-            s.commit()
-
     def copy_card(self, card_id: int, target_column_id: int, position: int) -> Card:
         """Copy a card to a target column in one session."""
         with self.session() as s:

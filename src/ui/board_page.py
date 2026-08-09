@@ -8,14 +8,14 @@ from nicegui import app, ui
 
 from src.services.export_service import export as _export
 from src.ui import dialogs
-from src.ui._shared import (
-    _COMPLETED_CUTOFF_DAYS,
+from src.ui.column_component import ColumnComponent
+from src.ui.shared import (
+    COMPLETED_CUTOFF_DAYS,
     LABEL_ICON_REMOVE,
     PRIO_CHOICES,
     REPEAT_ICON_SET,
-    _DragState,
+    DragState,
 )
-from src.ui.column_component import ColumnComponent
 
 if TYPE_CHECKING:
     from src.database import Database
@@ -95,7 +95,7 @@ class BoardPageController:
         self._card_components: dict[int, CardComponent] = {}
         self._column_components: dict[int, ColumnComponent] = {}
         self._boards_cache: list[Board] | None = None
-        self._drag_state = _DragState()
+        self._drag_state = DragState()
         self._container = ui.element("div").classes("w-full")
 
     # -- lifecycle --
@@ -545,7 +545,7 @@ class BoardPageController:
                 self._db.delete_all_non_repeat_cards(self._board.id)
             elif mode == "2w":
                 self._db.delete_completed_non_repeat_cards_older_than(
-                    self._board.id, days=_COMPLETED_CUTOFF_DAYS
+                    self._board.id, days=COMPLETED_CUTOFF_DAYS
                 )
             else:
                 self._db.delete_completed_non_repeat_cards(self._board.id)

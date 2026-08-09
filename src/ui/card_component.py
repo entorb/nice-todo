@@ -8,20 +8,20 @@ from typing import TYPE_CHECKING
 from nicegui import ui
 
 from src.models import utcnow
-from src.ui._shared import (
-    _COLOR_CARD_BG,
-    _COLOR_CARD_COMPLETED_BG,
-    _COLOR_TEXT_DARK,
-    _EVENT_KEYDOWN_ENTER,
-    _ICON_BTN_OPACITY,
-    _ICON_BTN_PROPS,
-    _OPACITY_COMPLETED_LABELED,
-    _OPACITY_COMPLETED_PLAIN,
+from src.ui.shared import (
+    COLOR_CARD_BG,
+    COLOR_CARD_COMPLETED_BG,
+    COLOR_TEXT_DARK,
+    EVENT_KEYDOWN_ENTER,
+    ICON_BTN_OPACITY,
+    ICON_BTN_PROPS,
+    OPACITY_COMPLETED_LABELED,
+    OPACITY_COMPLETED_PLAIN,
     PRIO_ICON_SET,
     REPEAT_ICON_SET,
     REPEAT_ICON_UNSET,
-    _contrast_color,
-    _DragState,
+    DragState,
+    contrast_color,
     prio_choices,
 )
 
@@ -45,7 +45,7 @@ class CardComponent(ui.card):
     def __init__(  # noqa: PLR0913
         self,
         card: Card,
-        drag_state: _DragState | None = None,
+        drag_state: DragState | None = None,
         label: Label | None = None,
         *,
         on_toggle_completed: Callable[[int, bool], None] | None = None,
@@ -95,8 +95,8 @@ class CardComponent(ui.card):
     @staticmethod
     def _color_class(label: Label | None) -> str:
         """Return the contrast CSS class (card-dark/card-light) for a label."""
-        text_color = _contrast_color(label.color) if label else _COLOR_TEXT_DARK
-        return "card-dark" if text_color == _COLOR_TEXT_DARK else "card-light"
+        text_color = contrast_color(label.color) if label else COLOR_TEXT_DARK
+        return "card-dark" if text_color == COLOR_TEXT_DARK else "card-light"
 
     @staticmethod
     def _compute_style(card: Card, label: Label | None) -> str:
@@ -106,17 +106,17 @@ class CardComponent(ui.card):
             "transition:box-shadow 0.15s,opacity 0.15s;"
         )
         if label is not None:
-            text_color = _contrast_color(label.color)
+            text_color = contrast_color(label.color)
             style += f"background:{label.color};color:{text_color};"
             if card.is_completed:
-                style += _OPACITY_COMPLETED_LABELED
+                style += OPACITY_COMPLETED_LABELED
         elif card.is_completed:
             style += (
-                f"background:{_COLOR_CARD_COMPLETED_BG};"
-                f"{_OPACITY_COMPLETED_PLAIN}color:{_COLOR_TEXT_DARK};"
+                f"background:{COLOR_CARD_COMPLETED_BG};"
+                f"{OPACITY_COMPLETED_PLAIN}color:{COLOR_TEXT_DARK};"
             )
         else:
-            style += f"background:{_COLOR_CARD_BG};color:{_COLOR_TEXT_DARK};"
+            style += f"background:{COLOR_CARD_BG};color:{COLOR_TEXT_DARK};"
 
         return style
 
@@ -128,7 +128,7 @@ class CardComponent(ui.card):
             if is_completed:
                 self._checkbox.style(replace="opacity:1;")
             else:
-                self._checkbox.style(replace=_ICON_BTN_OPACITY)
+                self._checkbox.style(replace=ICON_BTN_OPACITY)
         # Update card style
         new_style = self._compute_style(self.card_data, self._label)
         self.style(replace=new_style)
@@ -185,11 +185,11 @@ class CardComponent(ui.card):
                     icon="radio_button_unchecked",
                     on_click=_toggle_select,
                 )
-                .props(_ICON_BTN_PROPS + " color=blue-grey")
+                .props(ICON_BTN_PROPS + " color=blue-grey")
                 .classes("min-w-[24px] min-h-[24px]")
             )
 
-        check_opacity = "" if card.is_completed else _ICON_BTN_OPACITY
+        check_opacity = "" if card.is_completed else ICON_BTN_OPACITY
 
         def _on_check_change(e: object, cid: int | None = card.id) -> None:
             """Optimistic update: apply UI changes instantly, save async."""
@@ -243,7 +243,7 @@ class CardComponent(ui.card):
             self.card_data.title = inp.value
             self._refresh_title_content()
 
-        title_input.on(_EVENT_KEYDOWN_ENTER, on_commit)
+        title_input.on(EVENT_KEYDOWN_ENTER, on_commit)
         title_input.on("blur", on_commit)
 
         url = _extract_url(card.title)
@@ -253,7 +253,7 @@ class CardComponent(ui.card):
                     icon="open_in_new",
                     on_click=lambda _, u=url: ui.navigate.to(u, new_tab=True),
                 )
-                .props(_ICON_BTN_PROPS + " color=primary")
+                .props(ICON_BTN_PROPS + " color=primary")
                 .tooltip(url)
             )
 
@@ -275,9 +275,7 @@ class CardComponent(ui.card):
                     if self._on_toggle_prio
                     else None
                 ),
-            ).props(f"{_ICON_BTN_PROPS} color=red").tooltip(
-                "Important (click to unset)"
-            )
+            ).props(f"{ICON_BTN_PROPS} color=red").tooltip("Important (click to unset)")
 
         if card.is_repeat:
             ui.button(
@@ -289,7 +287,7 @@ class CardComponent(ui.card):
                     if self._on_toggle_repeat
                     else None
                 ),
-            ).props(_ICON_BTN_PROPS).tooltip("Repeat (click to unset)")
+            ).props(ICON_BTN_PROPS).tooltip("Repeat (click to unset)")
 
     def _build_action_buttons(
         self,
@@ -302,13 +300,13 @@ class CardComponent(ui.card):
             label_dialog = self._build_label_dialog(card, available_labels)
             (
                 ui.button(icon="label", on_click=lambda _: label_dialog.open())
-                .props(_ICON_BTN_PROPS)
-                .style(_ICON_BTN_OPACITY)
+                .props(ICON_BTN_PROPS)
+                .style(ICON_BTN_OPACITY)
                 .tooltip("Set label")
             )
 
         with (
-            ui.button(icon="more_vert").props(_ICON_BTN_PROPS).style(_ICON_BTN_OPACITY),
+            ui.button(icon="more_vert").props(ICON_BTN_PROPS).style(ICON_BTN_OPACITY),
             ui.menu() as ctx_menu,
         ):
             # Repeat toggle

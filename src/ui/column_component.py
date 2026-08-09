@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
-from src.ui._shared import (
-    _COLOR_COLUMN_BG,
-    _COLOR_COLUMN_HIGHLIGHT,
-    _EVENT_KEYDOWN_ENTER,
-    _OPACITY_COLUMN_DELETE,
-    _DragState,
-)
 from src.ui.card_component import CardComponent
+from src.ui.shared import (
+    COLOR_COLUMN_BG,
+    COLOR_COLUMN_HIGHLIGHT,
+    EVENT_KEYDOWN_ENTER,
+    OPACITY_COLUMN_DELETE,
+    DragState,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,7 +27,7 @@ class ColumnComponent(ui.column):
     def __init__(  # noqa: PLR0913
         self,
         column: Column,
-        drag_state: _DragState | None = None,
+        drag_state: DragState | None = None,
         labels: list[Label] | None = None,
         *,
         on_rename: Callable[[int, str], None] | None = None,
@@ -57,7 +57,7 @@ class ColumnComponent(ui.column):
 
         with self.classes("rounded-lg board-col").style(
             "min-width:280px;max-width:320px;gap:3px;"
-            f"background:{_COLOR_COLUMN_BG};padding:12px;border-radius:10px;"
+            f"background:{COLOR_COLUMN_BG};padding:12px;border-radius:10px;"
         ):
             # Column header
             with ui.row().classes("items-center w-full no-wrap gap-0"):
@@ -74,7 +74,7 @@ class ColumnComponent(ui.column):
                     .style("font-weight:600;font-size:0.95rem;")
                 )
                 name_input.on(
-                    _EVENT_KEYDOWN_ENTER,
+                    EVENT_KEYDOWN_ENTER,
                     lambda _e, inp=name_input, cid=column.id: (
                         self._on_rename(cid, inp.value)  # type: ignore[misc]
                         if self._on_rename and inp.value
@@ -99,7 +99,7 @@ class ColumnComponent(ui.column):
                         else None
                     ),
                 ).props("flat dense round size=sm").classes("text-grey-5").style(
-                    _OPACITY_COLUMN_DELETE
+                    OPACITY_COLUMN_DELETE
                 ).tooltip("Delete column")
 
             # Card list
@@ -126,7 +126,7 @@ class ColumnComponent(ui.column):
                 )
             )
             add_input.on(
-                _EVENT_KEYDOWN_ENTER,
+                EVENT_KEYDOWN_ENTER,
                 lambda _e, inp=add_input, cid=column.id: self._handle_add_card(
                     inp, cid
                 ),
@@ -157,10 +157,10 @@ class ColumnComponent(ui.column):
             self._drag_state.drag_column = self
 
     def _highlight(self) -> None:
-        self.style(f"background:{_COLOR_COLUMN_HIGHLIGHT};")
+        self.style(f"background:{COLOR_COLUMN_HIGHLIGHT};")
 
     def _unhighlight(self) -> None:
-        self.style(f"background:{_COLOR_COLUMN_BG};")
+        self.style(f"background:{COLOR_COLUMN_BG};")
 
     def _handle_drop(self) -> None:
         self._unhighlight()

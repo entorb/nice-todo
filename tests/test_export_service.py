@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from src.models import Board, Card, Column
+from src.models import Board, Card, Column, Label
 from src.services.export_service import export
 
 
@@ -16,15 +16,27 @@ def _make_column(name: str, cards: list[Card]) -> Column:
     return col
 
 
-def _make_card(title: str, *, is_completed: bool = False) -> Card:
+def _make_card(
+    title: str,
+    *,
+    is_completed: bool = False,
+    label_id: int | None = None,
+    prio: bool | None = None,
+) -> Card:
     return Card(
         id=1,
         column_id=1,
         title=title,
+        label_id=label_id,
+        prio=prio,
         date_completed=datetime.now(tz=UTC).replace(tzinfo=None)
         if is_completed
         else None,
     )
+
+
+def _make_label(name: str, label_id: int = 1) -> Label:
+    return Label(id=label_id, name=name)
 
 
 class TestExportAll:
@@ -116,3 +128,143 @@ class TestExportCompleted:
         )
         result = export(board, [], completed_only=True)
         assert result == "## Board\n"
+
+
+class TestExportHtml:
+    def test_html_full(self):
+        board = _make_board(
+            "My Board",
+            [
+                _make_column(
+                    "To Do",
+                    [_make_card("Task 1"), _make_card("Done", is_completed=True)],
+                ),
+            ],
+        )
+        result = export(board, [], fmt="html")
+        assert "<h2>My Board</h2>" in result
+        assert "<h3>To Do</h3>" in result
+        assert '<li><input type="checkbox" disabled> Task 1</li>' in result
+        assert '<li><input type="checkbox" checked disabled> Done</li>' in result
+
+    def test_html_completed_only(self):
+        board = _make_board(
+            "Board",
+            [
+                _make_column(
+                    "Col",
+                    [_make_card("Done", is_completed=True), _make_card("Todo")],
+                ),
+            ],
+        )
+        result = export(board, [], fmt="html", completed_only=True)
+        assert '<input type="checkbox" checked disabled>' in result
+        assert "Todo" not in result
+
+    def test_html_escapes_title_and_column(self):
+        board = _make_board(
+            "B <script>",
+            [_make_column("C & D", [_make_card("<b>x</b>", is_completed=True)])],
+        )
+        result = export(board, [], fmt="html")
+        assert "&lt;b&gt;x&lt;/b&gt;" in result
+        assert "B &lt;script&gt;" in result
+        assert "C &amp; D" in result
+
+
+class TestExportLabelsAndPrio:
+    def test_markdown_label(self):
+        board = _make_board(
+            "Board", [_make_column("Col", [_make_card("T", label_id=1)])]
+        )
+        result = export(board, [_make_label("Work")])
+        assert "- [ ] T (Work)" in result
+
+    def test_markdown_prio_marker(self):
+        board = _make_board(
+            "Board", [_make_column("Col", [_make_card("T", prio=True)])]
+        )
+        result = export(board, [])
+        assert "- [ ] T ⚑" in result
+
+    def test_markdown_prio_false_no_marker(self):
+        board = _make_board(
+            "Board", [_make_column("Col", [_make_card("T", prio=False)])]
+        )
+        result = export(board, [])
+        assert "- [ ] T" in result
+        assert "⚑" not in result
+
+    def test_markdown_label_and_prio_completed_only(self):
+        board = _make_board(
+            "Board",
+            [
+                _make_column(
+                    "Col", [_make_card("T", is_completed=True, label_id=1, prio=True)]
+                )
+            ],
+        )
+        result = export(board, [_make_label("Work")], completed_only=True)
+        assert "- T (Work) ⚑" in result
+
+    def test_html_label_and_prio(self):
+        board = _make_board(
+            "Board",
+            [_make_column("Col", [_make_card("T", label_id=1, prio=True)])],
+        )
+        result = export(board, [_make_label("Work")], fmt="html")
+        assert "<em>(Work)</em>" in result
+        assert 'title="Important">⚑</span>' in result
+
+    def test_html_label_missing_no_suffix(self):
+        board = _make_board(
+            "Board",
+            [_make_column("Col", [_make_card("T", label_id=99)])],
+        )
+        result = export(board, [], fmt="html")
+        assert "<em>" not in result
+
+
+class TestExportTxt:
+    def test_txt_full(self):
+        board = _make_board(
+            "My Board",
+            [
+                _make_column(
+                    "To Do",
+                    [_make_card("Task 1"), _make_card("Done", is_completed=True)],
+                ),
+            ],
+        )
+        result = export(board, [], fmt="txt")
+        assert result == "To Do\n[ ] Task 1\n[x] Done\n"
+
+    def test_txt_label_and_prio(self):
+        board = _make_board(
+            "Board",
+            [_make_column("Col", [_make_card("T", label_id=1, prio=True)])],
+        )
+        result = export(board, [_make_label("Work")], fmt="txt")
+        assert result == "Col\n[ ] T (Work) *\n"
+
+    def test_txt_prio_false_no_marker(self):
+        board = _make_board(
+            "Board",
+            [_make_column("Col", [_make_card("T", label_id=1, prio=False)])],
+        )
+        result = export(board, [_make_label("Work")], fmt="txt")
+        assert result == "Col\n[ ] T (Work)\n"
+        assert "*" not in result
+
+    def test_txt_completed_only(self):
+        board = _make_board(
+            "Board",
+            [
+                _make_column(
+                    "Col",
+                    [_make_card("Done", is_completed=True), _make_card("Todo")],
+                ),
+            ],
+        )
+        result = export(board, [], fmt="txt", completed_only=True)
+        assert result == "Col\nDone\n"
