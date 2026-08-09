@@ -1,11 +1,11 @@
 """NiceGUI Nice TODO — application entry point."""
+# ruff: noqa: E402
 
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# ruff: noqa: E402
 load_dotenv()
 
 from nicegui import app, ui

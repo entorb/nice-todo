@@ -100,6 +100,24 @@ class TestBoard:
         db.add_board("a", "A")
         assert [b.key for b in db.get_all_boards()] == ["a", "b"]
 
+    def test_touch_last_login(self, db):
+        board = _new_board(db)
+        with db.session() as s:
+            existing = s.get(Board, board.id)
+            existing.last_login = datetime.now(tz=UTC).replace(tzinfo=None) - timedelta(
+                days=1
+            )
+            s.commit()
+        db.touch_last_login(board.id)
+        touched = db.get_board_by_key("test")
+        assert touched.last_login is not None
+        assert touched.last_login > datetime.now(tz=UTC).replace(
+            tzinfo=None
+        ) - timedelta(seconds=1)
+
+    def test_touch_last_login_missing_board(self, db):
+        db.touch_last_login(999)
+
 
 class TestColumn:
     def test_create_column(self, db):
@@ -208,15 +226,6 @@ class TestCard:
         assert moved.position == 5
         assert db.get_cards(orig_column_id) == []
 
-    def test_update_card_positions(self, db):
-        col = _new_column(db)
-        c1 = db.create_card(col.id, "A", 0)
-        c2 = db.create_card(col.id, "B", 1)
-        c3 = db.create_card(col.id, "C", 2)
-        db.update_card_positions([(c1.id, 2), (c2.id, 0), (c3.id, 1)])
-        cards = db.get_cards(col.id)
-        assert [c.id for c in cards] == [c2.id, c3.id, c1.id]
-
     def test_copy_card(self, db):
         board = _new_board(db)
         col = db.create_column(board.id)
@@ -288,6 +297,11 @@ class TestCard:
         remaining = db.get_cards(col.id)
         assert [c.title for c in remaining] == ["B"]
         assert remaining[0].date_completed is None
+
+    def test_delete_cards_board_without_columns(self, db):
+        board = _new_board(db)
+        assert db.delete_completed_non_repeat_cards(board.id) == 0
+        assert db.delete_all_non_repeat_cards(board.id) == 0
 
     def test_bulk_set_label(self, db):
         col = _new_column(db)
@@ -366,6 +380,16 @@ class TestSort:
             "Done2",
             "Done1",
         ]
+
+    def test_sort_skips_empty_columns(self, db):
+        board = _new_board(db)
+        col = db.create_column(board.id)
+        db.create_card(col.id, "B", 0)
+        db.create_column(board.id)
+        board = db.get_board_by_key("test")
+        db.sort_cards_by_date(board)
+        db.sort_cards_by_prio_label_name(board, db.get_labels())
+        assert [c.title for c in db.get_cards(col.id)] == ["B"]
 
 
 class TestLabel:

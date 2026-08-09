@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from nicegui import ui
 
 from src.models import utcnow
-from src.ui._shared import _COMPLETED_CUTOFF_DAYS
+from src.ui.shared import COMPLETED_CUTOFF_DAYS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -212,7 +212,7 @@ def delete_cards_dialog(
         def _render_preview() -> None:
             preview.clear()
             scope_val: str = scope.value
-            cutoff = utcnow() - timedelta(days=_COMPLETED_CUTOFF_DAYS)
+            cutoff = utcnow() - timedelta(days=COMPLETED_CUTOFF_DAYS)
             board = get_board()
             with preview:
                 total = 0
