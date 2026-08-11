@@ -7,13 +7,8 @@ Single-package app: NiceGUI + SQLModel + SQLite.
 | Action | Command |
 | ------ | ------- |
 | Run | `uv run python -m src.main` (port 8505) |
-| Ruff check | `uv run ruff check .` |
-| Ruff format | `uv run ruff format .` |
-| Type check | `uv run pyright src` |
-| Test | `uv run pytest` |
-| Pre-commit | `prek run --all-files` |
+| Ruff format and lint | `uv run ruff format && uv run ruff check --fix` |
 | All checks | `scripts/run_checks.sh` (runs all `scripts/chk_*.sh`) |
-| CI-local equivalent | `uv run --frozen ruff format --check && uv run --frozen ruff check --no-fix --output-format=github && uv run --frozen pyright src && uv run --frozen pytest --cov && prek run --all-files` |
 
 Admin scripts: `scripts/create_board.sh <name>`, `scripts/delete_board.sh <id_or_key>`.
 

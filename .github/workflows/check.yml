@@ -17,6 +17,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v7
@@ -24,7 +25,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1 # latest only
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v9
         with:
           enable-cache: true
           cache-dependency-glob: |
@@ -36,36 +37,41 @@ jobs:
           node-version: 24
 
       - name: Run prek pre-commit
-        uses: j178/prek-action@v3.0.0
-
-      - name: Run markdownlint
-        run: npm exec -- markdownlint-cli2 "**/*.md"
-
-      - name: Run cspell
-        run: npm exec -- cspell-cli --gitignore --unique --silent .
+        uses: j178/prek-action@v3
 
       - name: Prepare
         run: |
           uv sync --frozen --no-build
 
-      - name: Run py format Ruff
+      - name: Run md lint
+        run: npm exec -- markdownlint-cli2 "**/*.md"
+
+      - name: Run CSpell
+        run: npm exec -- cspell-cli --gitignore --unique .
+
+      - name: Run py lint Ruff
         run: |
           uv run --frozen --no-build ruff format --check
           uv run --frozen --no-build ruff check --no-fix --output-format=github
 
+      - name: Run py type check Pyright
+        run: uv run --frozen --no-build pyright src
+
       - name: Run py test Pytest
         run: |
-          uv run --frozen --no-build pytest \
-            --cov \
-            --cov-report=xml:coverage.xml \
-            --quiet \
-            --tb=short
+          uv run --frozen --no-build pytest
+        #     --cov \
+        #     --cov-report=xml:coverage.xml \
+        #     --quiet \
+        #     --tb=short
 
       - name: Run py dead code Vulture
         run: uv run --frozen --no-build vulture
 
-      - name: Run py types Pyright
-        run: uv run --frozen --no-build pyright src
+      # for SonarQube coverage report
+      # - uses: SonarSource/sonarqube-scan-action@v8
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Run py audit
         run: uv audit --preview-features audit
