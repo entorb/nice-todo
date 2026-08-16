@@ -11,8 +11,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   check:
@@ -20,7 +19,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 1 # latest only
@@ -32,22 +32,22 @@ jobs:
             pyproject.toml
             uv.lock
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
       - name: Run prek pre-commit
-        uses: j178/prek-action@v3.0.0
+        uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
+
+
+      - name: Run md lint
+        uses: rvben/rumdl@4997ff07b63c7a54d6a495ebcd3ce7f23ee1173f # v0.2.55
+
+      - name: Run CSpell
+        uses: streetsidesoftware/cspell-action@de2a73e963e7443969755b648a1008f77033c5b2 # v8.4.0
+        with:
+          files: '**/*'
+          incremental_files_only: false
 
       - name: Prepare
         run: |
           uv sync --frozen --no-build
-
-      - name: Run md lint
-        run: npm exec -- markdownlint-cli2 "**/*.md"
-
-      - name: Run CSpell
-        run: npm exec -- cspell-cli --gitignore --unique .
 
       - name: Run py lint Ruff
         run: |
