@@ -2,11 +2,15 @@
 
 # ensure we are in the root dir
 cd "$(dirname "$0")/.."
+# out=$(mktemp)
+# trap 'rm -f "$out"' EXIT INT TERM
 
 rm -f cspell-words-missing.txt
-npm exec -- cspell-cli --cache --gitignore --quiet --unique .
-if [ $? -ne 0 ]; then
-    npm exec -- cspell-cli --cache --gitignore --unique --words-only . > cspell-words-missing.txt
-    echo "See cspell-words-missing.txt for unknown words. Fix or transfer to cspell-words.txt"
-    exit 1
+pnpm dlx cspell-cli@10.0.1 --cache --gitignore --unique --words-only . > cspell-words-missing.txt 2> /dev/null
+status=$?
+
+if [ $status -ne 0 ]; then
+    echo "Found unknown spellings, see cspell-words-missing.txt. Fix or transfer to cspell-words.txt"
+    head -n 100 "$out"
 fi
+exit $status

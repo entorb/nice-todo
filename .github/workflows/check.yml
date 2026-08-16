@@ -55,7 +55,7 @@ jobs:
           uv run --frozen --no-build ruff check --no-fix --output-format=github
 
       - name: Run py type check Pyright
-        run: uv run --frozen --no-build pyright src
+        run: uv run --frozen --no-build pyright
 
       - name: Run py test Pytest
         run: |
