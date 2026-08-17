@@ -1,12 +1,13 @@
 ---
 $schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
-version: "0.2"
+version: '0.2'
 language: en-US
+useCache: true
 useGitignore: true
 
 dictionaryDefinitions:
   - name: cspell-words
-    path: "./cspell-words.txt"
+    path: cspell-words.txt
     addWords: true
 
 dictionaries:
@@ -15,10 +16,10 @@ dictionaries:
   # - typescript
 
 ignorePaths:
-  - ".*"
-  - "LICENSE"
-  - "cspell.config.yaml"
-  - "pyproject.toml"
-  - "requirements.txt"
-  - "src/icons"
-  - "uv.lock"
+  - '.*'
+  - 'cspell-words.txt'
+  - 'cspell.config.yaml'
+  - 'LICENSE'
+  - 'requirements.txt'
+  - 'src/icons'
+  - 'uv.lock'
