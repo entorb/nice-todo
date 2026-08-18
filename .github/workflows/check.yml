@@ -46,6 +46,10 @@ jobs:
           files: '**/*'
           incremental_files_only: false
 
+      - name: yaml lint
+        run: |
+          npx @owenlamont/ryl@0.21.0 check -d '{extends: default, rules: {line-length: disable, truthy: disable}, ignore: [pnpm-lock.yaml]}' .
+
       - name: Prepare
         run: |
           uv sync --frozen --no-build
