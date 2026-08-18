@@ -1,0 +1,82 @@
+---
+name: Check Code
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1  # latest only
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Run prek pre-commit
+        uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece  # v3.0.0
+
+
+      - name: Run md lint
+        uses: rvben/rumdl@4997ff07b63c7a54d6a495ebcd3ce7f23ee1173f  # v0.2.55
+
+      - name: Run CSpell
+        uses: streetsidesoftware/cspell-action@de2a73e963e7443969755b648a1008f77033c5b2  # v8.4.0
+        with:
+          files: '**/*'
+          incremental_files_only: false
+
+      - name: yaml lint
+        run: |
+          npx -y @owenlamont/ryl@0.21.0 check -d '{extends: default, rules: {line-length: disable, truthy: disable}, ignore: [pnpm-lock.yaml]}' .
+
+      - name: Prepare
+        run: |
+          uv sync --frozen --no-build
+
+      - name: Run py lint Ruff
+        run: |
+          uv run --frozen --no-build ruff format --check
+          uv run --frozen --no-build ruff check --no-fix --output-format=github
+
+      - name: Run py type check Pyright
+        run: uv run --frozen --no-build pyright
+
+      - name: Run py test Pytest
+        run: |
+          uv run --frozen --no-build pytest
+        #     --cov \
+        #     --cov-report=xml:coverage.xml \
+        #     --quiet \
+        #     --tb=short
+
+      - name: Run py dead code Vulture
+        run: uv run --frozen --no-build vulture
+
+      # for SonarQube coverage report
+      # - uses: SonarSource/sonarqube-scan-action@v8
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Run py audit
+        run: uv audit --preview-features audit
