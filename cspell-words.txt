@@ -25,6 +25,7 @@ rrggbb
 rumdl
 selectinload
 sess
+shfmt
 SonarCloud
 SonarQube
 startsecs
