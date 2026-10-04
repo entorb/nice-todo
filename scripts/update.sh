@@ -1,10 +1,7 @@
 #!/bin/sh
-
-# ensure we are in the root dir
-cd "$(dirname "$0")/.." || exit 1
-
-# exit upon error
+# shellcheck disable=SC2086 # word splitting of package lists is intended
 set -e
+cd "$(dirname "$0")/.."
 
 # 1. Python
 
