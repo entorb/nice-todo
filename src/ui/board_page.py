@@ -176,6 +176,14 @@ class BoardPageController:
                 "Sort cards by date"
             )
             ui.button(
+                icon="view_column",
+                on_click=self._on_add_column,
+            ).props("flat dense round").classes("text-white").tooltip("Add column")
+            ui.button(
+                icon="download",
+                on_click=self._on_export,
+            ).props("flat dense round").classes("text-white").tooltip("Export")
+            ui.button(
                 icon="sync",
                 on_click=self._refresh,
             ).props("flat dense round").classes("text-white").tooltip(
@@ -215,11 +223,9 @@ class BoardPageController:
     def _render_menu(self) -> None:
         ui.menu_item("Rename Board", on_click=self._on_rename_board)
         ui.menu_item("New Board", on_click=self._on_new_board)
-        ui.menu_item("Add Column", on_click=self._on_add_column)
         ui.separator()
         ui.menu_item("Manage Labels", on_click=self._on_manage_labels)
         ui.separator()
-        ui.menu_item("Export", on_click=self._on_export)
         ui.menu_item("Delete Cards", on_click=self._on_delete_cards)
         ui.separator()
         ui.menu_item("Logout", on_click=lambda: ui.navigate.to("/logout"))

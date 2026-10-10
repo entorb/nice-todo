@@ -66,8 +66,8 @@ def _format_card(
     suffix = ""
     if card.label_id and card.label_id in label_map:
         suffix = f" ({label_map[card.label_id]})"
-    if card.prio is True:
-        suffix += " ⚑" if fmt == "markdown" else " *"
+    if card.prio is True and fmt == "markdown":
+        suffix += " ⚑"
 
     if completed_only:
         prefix = "" if fmt == "txt" else "- "

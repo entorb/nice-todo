@@ -245,7 +245,7 @@ class TestExportTxt:
             [_make_column("Col", [_make_card("T", label_id=1, prio=True)])],
         )
         result = export(board, [_make_label("Work")], fmt="txt")
-        assert result == "Col\n[ ] T (Work) *\n"
+        assert result == "Col\n[ ] T (Work)\n"
 
     def test_txt_prio_false_no_marker(self):
         board = _make_board(

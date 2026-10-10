@@ -31,7 +31,7 @@ def confirm_dialog(message: str, on_confirm: Callable[[], None]) -> ui.dialog:
             ui.button("Cancel", on_click=dialog.close).props("flat")
             ui.button(
                 "Confirm",
-                on_click=lambda: (on_confirm(), dialog.close()),
+                on_click=lambda: (dialog.close(), on_confirm()),
             ).props("color=negative")
     dialog.open()
     return dialog
