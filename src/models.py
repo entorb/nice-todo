@@ -7,6 +7,7 @@ so Board.columns and Column.cards load and delete automatically.
 
 from datetime import UTC, datetime
 
+from pydantic import NaiveDatetime
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -50,8 +51,8 @@ class Card(SQLModel, table=True):
         default=None, foreign_key="label.id", ondelete="SET NULL", index=True
     )
     prio: bool | None = Field(default=None, nullable=True)
-    date_created: datetime = Field(default_factory=utcnow, nullable=False)
-    date_completed: datetime | None = Field(default=None, nullable=True)
+    date_created: NaiveDatetime = Field(default_factory=utcnow, nullable=False)
+    date_completed: NaiveDatetime | None = Field(default=None, nullable=True)
 
     @property
     def is_completed(self) -> bool:
@@ -85,7 +86,7 @@ class Board(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     key: str = Field(unique=True, nullable=False, default="", index=True)
     name: str = Field(default="", nullable=False)
-    last_login: datetime | None = Field(default=None, nullable=True)
+    last_login: NaiveDatetime | None = Field(default=None, nullable=True)
 
     columns: list[Column] = Relationship(
         cascade_delete=True,
