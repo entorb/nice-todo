@@ -65,7 +65,7 @@ src/services/             -> export_service, sort
 src/ui/                   -> board_page, column_component, card_component, dialogs, _shared
 ```
 
-Models: `Board` has `Column` children, `Column` has `Card` children — cascade delete via `Relationship()`.
+Models: `User` owns `Board` (`owner_id`; app hard-codes user 1, no multi-user auth). `Board` has `Column` children, `Column` has `Card` children — cascade delete via `Relationship()`.
 `Column.__tablename__ = "column_"` (SQL reserved-word).
 `Card.is_completed` is a computed property (`date_completed is not None`).
 
@@ -73,7 +73,9 @@ Models: `Board` has `Column` children, `Column` has `Card` children — cascade 
 
 All datetimes are stored as **naive UTC** (`datetime.now(tz=UTC).replace(tzinfo=None)`,
 helper `src.models.utcnow`). Never store local time or tz-aware datetimes — SQLite has no
-timezone type. Use `models.utcnow` for defaults and comparisons; the existing `date_created`
+timezone type. Annotate model fields `NaiveDatetime` (pydantic), not `datetime` — sqlmodel ≥0.0.48
+maps plain `datetime` to `UTCDateTime`, which rejects naive values on write.
+Use `models.utcnow` for defaults and comparisons; the existing `date_created`
 and `date_completed` values in dev DBs were created under the same convention.
 
 ## Env
