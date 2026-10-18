@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload  # type: ignore[attr-defined]
 from sqlmodel import Session, SQLModel, create_engine, delete, select, update
 
-from src.models import Board, Card, Column, Label, utcnow
+from src.models import Board, Card, Column, Label, User, utcnow
 from src.services.sort import card_sort_by_date, card_sort_by_prio_label_name
 
 _KEY_PATTERN = re.compile(r"^[a-zA-Z0-9._~-]+$")
@@ -71,6 +71,25 @@ class Database:
 
         Add future migrations here as discrete, idempotent steps.
         """
+        with self.session() as s:
+            if s.get(User, 1) is None:
+                s.add(User(id=1, name="Torben"))
+                s.commit()
+
+        # TODO: remove after prod deployment
+        # ponytail: SQLite rejects ADD COLUMN with REFERENCES + non-NULL default
+        # while foreign_keys=ON, so legacy DBs get a nullable owner_id.
+        # Upgrade path: table rebuild.
+        with self._engine.begin() as conn:
+            cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(board)")}
+            if "owner_id" not in cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE board ADD COLUMN owner_id INTEGER REFERENCES user(id)"
+                )
+                conn.exec_driver_sql("UPDATE board SET owner_id = 1")
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_board_owner_id ON board(owner_id)"
+                )
 
     def session(self) -> Session:
         """Create a new database session."""

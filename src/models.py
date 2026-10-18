@@ -78,12 +78,26 @@ class Column(SQLModel, table=True):
     )
 
 
+class User(SQLModel, table=True):
+    """A user owning boards."""
+
+    __tablename__ = "user"  # type: ignore[assignment]
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(nullable=False)
+    # nullable: no hash yet, successor app sets it
+    secret_hashed: str | None = Field(default=None, unique=True, nullable=True)
+
+
 class Board(SQLModel, table=True):
     """The top-level entity containing columns and labels."""
 
     __tablename__ = "board"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True)
+    # ponytail: single-user app hard-codes owner 1. Upgrade path: pass owner
+    # from auth session.
+    owner_id: int = Field(default=1, foreign_key="user.id", nullable=False, index=True)
     key: str = Field(unique=True, nullable=False, default="", index=True)
     name: str = Field(default="", nullable=False)
     last_login: NaiveDatetime | None = Field(default=None, nullable=True)

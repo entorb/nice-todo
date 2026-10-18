@@ -1,9 +1,11 @@
+import sqlite3
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import delete
 
-from src.models import Board, Card, Column, Label
+from src.database import Database
+from src.models import Board, Card, Column, Label, User
 
 
 def _new_board(db, key: str = "test", name: str = "Board") -> Board:
@@ -485,3 +487,32 @@ class TestForeignKeyCascade:
             s.exec(delete(Card).where(Card.id == card.id))
             s.commit()
         assert db.get_cards(col.id) == []
+
+
+class TestUser:
+    def test_seed_user(self, db):
+        db.init()  # idempotent
+        with db.session() as s:
+            user = s.get(User, 1)
+        assert user is not None
+        assert user.name == "Torben"
+
+    def test_board_owner(self, db):
+        assert _new_board(db).owner_id == 1
+
+    # TODO: remove after prod deployment
+    def test_legacy_board_gets_owner(self, tmp_path):
+        path = tmp_path / "legacy.db"
+        con = sqlite3.connect(path)
+        con.execute(
+            "CREATE TABLE board (id INTEGER PRIMARY KEY, key TEXT NOT NULL,"
+            " name TEXT NOT NULL, last_login DATETIME)"
+        )
+        con.execute("INSERT INTO board (key, name) VALUES ('old', 'Old')")
+        con.commit()
+        con.close()
+        db = Database(db_path=path)
+        db.init()
+        board = db.get_board_by_key("old")
+        assert board is not None
+        assert board.owner_id == 1
