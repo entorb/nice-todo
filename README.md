@@ -1,5 +1,9 @@
 # Nice TODO
 
+2026-10-22: deprecated, migrated to FastAPI+Vue in [entorb/todo](https://github.com/entorb/todo/)
+
+---
+
 A Kanban-style task board built with NiceGUI and SQLModel.
 
 ## Features
