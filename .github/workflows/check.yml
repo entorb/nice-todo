@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1  # latest only
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: |
@@ -47,7 +47,7 @@ jobs:
           extra-args: '--all-files --quiet'
 
       - name: Run CSpell
-        uses: streetsidesoftware/cspell-action@e0668cf020899e887ee8ad4d173c31738a79eae8  # v9.0.1
+        uses: streetsidesoftware/cspell-action@6f3c77c1406bc930f944ba97e9801a22e42caf58  # v9.1.0
         with:
           files: '**/*'
           incremental_files_only: false
